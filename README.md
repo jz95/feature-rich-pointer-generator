@@ -1,2 +1,2 @@
-# mlp_project
-Workspace for MLP project.
+# MLP Project
+This is our Workspace for MLP project. Check the [google docs](https://docs.google.com/document/d/1E2p1h7s7PhCX-CSWkcq4TnxyZOLhmIXH6-iZFe6VzN4/edit?usp=sharing) for our weekly TODO list. Cheers. 🍺
