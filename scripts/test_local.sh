@@ -22,19 +22,19 @@ python $BASELINE_CODE_DIR/run_summarization.py\
 ########
 ## EVAL
 ########
-python $BASELINE_CODE_DIR/run_summarization.py\
-	--mode=eval\
-	--data_path=$DATA_DIR/chunked/val_*\
-	--vocab_path=$DATA_DIR/vocab\
-	--log_root=$LOG_DIR\
-	--exp_name=$EXP_DIR/$EXP_NAME
+# python $BASELINE_CODE_DIR/run_summarization.py\
+# 	--mode=eval\
+# 	--data_path=$DATA_DIR/chunked/val_*\
+# 	--vocab_path=$DATA_DIR/vocab\
+# 	--log_root=$LOG_DIR\
+# 	--exp_name=$EXP_DIR/$EXP_NAME
 
 #########
 ## DECODE
 #########
-python $BASELINE_CODE_DIR/run_summarization.py\
-	--mode=decode\
-	--data_path=$DATA_DIR/chunked/val_*\
-	--vocab_path=$DATA_DIR/vocab\
-	--log_root=$LOG_DIR\
-	--exp_name=$EXP_DIR/$EXP_NAME
+# python $BASELINE_CODE_DIR/run_summarization.py\
+# 	--mode=decode\
+# 	--data_path=$DATA_DIR/chunked/val_*\
+# 	--vocab_path=$DATA_DIR/vocab\
+# 	--log_root=$LOG_DIR\
+# 	--exp_name=$EXP_DIR/$EXP_NAME
