@@ -6,3 +6,6 @@ This is our Workspace for MLP project. Check the [google docs](https://docs.goog
 2. unzip the tarball `tar -xzf data.tar.gz`, then get a folder named `data`.
 3. move the `data` folder into the ROOT path of our porject.
 3. run the SHELL scripts in the folder `scripts`.
+
+
+### see scripts and comments for detailed explaination

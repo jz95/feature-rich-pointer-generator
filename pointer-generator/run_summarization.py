@@ -117,7 +117,9 @@ def calc_running_avg_loss(loss, running_avg_loss, summary_writer, step, decay=0.
 
 
 def restore_best_model():
-    """Load bestmodel file from eval directory, add variables for adagrad, and save to train directory"""
+    """Load bestmodel file from eval directory,
+    add variables for adagrad,
+    and save to train directory"""
     tf.logging.info("Restoring bestmodel for training...")
 
     # Initialize all vars in the model
@@ -136,7 +138,8 @@ def restore_best_model():
     new_model_name = curr_ckpt.split("/")[-1].replace("bestmodel", "model")
     new_fname = os.path.join(FLAGS.log_root, "train", new_model_name)
     print("Saving model to %s..." % (new_fname))
-    # this saver saves all variables that now exist, including Adagrad variables
+    # this saver saves all variables that now exist,
+    # including Adagrad variables
     new_saver = tf.train.Saver()
     new_saver.save(sess, new_fname)
     print("Saved.")
@@ -144,7 +147,9 @@ def restore_best_model():
 
 
 def convert_to_coverage_model():
-    """Load non-coverage checkpoint, add initialized extra variables for coverage, and save as new checkpoint"""
+    """Load non-coverage checkpoint,
+    add initialized extra variables for coverage,
+    and save as new checkpoint"""
     tf.logging.info("converting non-coverage model to coverage model..")
 
     # initialize an entire coverage model from scratch
@@ -176,7 +181,8 @@ def setup_training(model, batcher):
 
     model.build_graph()  # build the graph
     if FLAGS.convert_to_coverage_model:
-        assert FLAGS.coverage, "To convert your non-coverage model to a coverage model, run with convert_to_coverage_model=True and coverage=True"
+        assert FLAGS.coverage, "To convert your non-coverage model to a coverage model,\
+         run with convert_to_coverage_model=True and coverage=True"
         convert_to_coverage_model()
     if FLAGS.restore_best_model:
         restore_best_model()
@@ -189,6 +195,7 @@ def setup_training(model, batcher):
                              save_summaries_secs=60,  # save summaries for tensorboard every 60 secs
                              save_model_secs=60,  # checkpoint every 60 secs
                              global_step=model.global_step)
+
     summary_writer = sv.summary_writer
     tf.logging.info("Preparing or waiting for session...")
     sess_context_manager = sv.prepare_or_wait_for_session(
@@ -204,7 +211,8 @@ def setup_training(model, batcher):
 
 
 def run_training(model, batcher, sess_context_manager, sv, summary_writer):
-    """Repeatedly runs training iterations, logging loss to screen and writing summaries"""
+    """Repeatedly runs training iterations,
+    logging loss to screen and writing summaries"""
     tf.logging.info("starting run_training")
     with sess_context_manager as sess:
         if FLAGS.debug:  # start the tensorflow debugger
@@ -243,7 +251,10 @@ def run_training(model, batcher, sess_context_manager, sv, summary_writer):
 
 
 def run_eval(model, batcher, vocab):
-    """Repeatedly runs eval iterations, logging to screen and writing summaries. Saves the model with the best loss seen so far."""
+    """Repeatedly runs eval iterations,
+    logging to screen and writing summaries.
+    Saves the model with the best loss seen so far."""
+
     model.build_graph()  # build the graph
     # we will keep 3 best checkpoints at a time
     saver = tf.train.Saver(max_to_keep=3)
@@ -253,7 +264,8 @@ def run_eval(model, batcher, vocab):
     # this is where checkpoints of best models are saved
     bestmodel_save_path = os.path.join(eval_dir, 'bestmodel')
     summary_writer = tf.summary.FileWriter(eval_dir)
-    # the eval job keeps a smoother, running average loss to tell it when to implement early stopping
+    # the eval job keeps a smoother, running average loss to tell it
+    # when to implement early stopping
     running_avg_loss = 0
     best_loss = None  # will hold the best loss achieved so far
 
@@ -333,7 +345,7 @@ def main(unused_argv):
     hps_dict = {}
     for key, val in FLAGS.__flags.items():  # for each flag
         if key in hparam_list:  # if it's in the list
-            hps_dict[key] = val  # add it to the dict
+            hps_dict[key] = val.value  # add it to the dict
     hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
 
     # Create a batcher object that will create minibatches of data
@@ -342,14 +354,14 @@ def main(unused_argv):
 
     tf.set_random_seed(111)  # a seed value for randomness
 
-    if hps.mode.value == 'train':
+    if hps.mode == 'train':
         print("creating model...")
         model = SummarizationModel(hps, vocab)
         setup_training(model, batcher)
-    elif hps.mode.value == 'eval':
+    elif hps.mode == 'eval':
         model = SummarizationModel(hps, vocab)
         run_eval(model, batcher, vocab)
-    elif hps.mode.value == 'decode':
+    elif hps.mode == 'decode':
         decode_model_hps = hps  # This will be the hyperparameters for the decoder model
         # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
         decode_model_hps = hps._replace(max_dec_steps=1)

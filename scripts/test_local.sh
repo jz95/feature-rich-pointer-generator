@@ -5,8 +5,9 @@
 export ROOT_DIR=~/mlp_project
 export DATA_DIR=$ROOT_DIR/data/finished_files
 export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
+# see the logs dir for experiment records
 export LOG_DIR=$ROOT_DIR/logs
-export EXP_DIR=$ROOT_DIR/exps
+# give a name to your experiment
 export EXP_NAME=myexperiment
 
 ########
@@ -17,17 +18,19 @@ python $BASELINE_CODE_DIR/run_summarization.py\
 	--data_path=$DATA_DIR/chunked/train_*\
 	--vocab_path=$DATA_DIR/vocab\
 	--log_root=$LOG_DIR\
-	--exp_name=$EXP_DIR/$EXP_NAME
+	--exp_name=$EXP_NAME &
 
-########
-## EVAL
-########
-# python $BASELINE_CODE_DIR/run_summarization.py\
-# 	--mode=eval\
-# 	--data_path=$DATA_DIR/chunked/val_*\
-# 	--vocab_path=$DATA_DIR/vocab\
-# 	--log_root=$LOG_DIR\
-# 	--exp_name=$EXP_DIR/$EXP_NAME
+########################
+## RUN EVAL CONCURRENTLY
+## USING THE SAME SETTING
+## AS TRAINING
+########################
+python $BASELINE_CODE_DIR/run_summarization.py\
+	--mode=eval\
+	--data_path=$DATA_DIR/chunked/val_*\
+	--vocab_path=$DATA_DIR/vocab\
+	--log_root=$LOG_DIR\
+	--exp_name=$EXP_NAME
 
 #########
 ## DECODE
