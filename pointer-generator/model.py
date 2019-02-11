@@ -107,7 +107,8 @@ class SummarizationModel(object):
         return encoder_outputs, fw_st, bw_st
 
     def _reduce_states(self, fw_st, bw_st):
-        """Add to the graph a linear layer to reduce the encoder's final FW and BW state into a single initial state for the decoder. This is needed because the encoder is bidirectional but the decoder is not.
+        """Add to the graph a linear layer to reduce the encoder's final FW and BW state into a single initial state for the decoder. 
+        This is needed because the encoder is bidirectional but the decoder is not.
 
         Args:
           fw_st: LSTMStateTuple with hidden_dim units.
@@ -142,7 +143,9 @@ class SummarizationModel(object):
             return tf.contrib.rnn.LSTMStateTuple(new_c, new_h)
 
     def _add_decoder(self, inputs):
-        """Add attention decoder to the graph. In train or eval mode, you call this once to get output on ALL steps. In decode (beam search) mode, you call this once for EACH decoder step.
+        """Add attention decoder to the graph. In train or eval mode, 
+        you call this once to get output on ALL steps. In decode (beam search) mode, 
+        you call this once for EACH decoder step.
 
         Args:
           inputs: inputs to the decoder (word embeddings). A list of tensors shape (batch_size, emb_dim)
@@ -170,7 +173,8 @@ class SummarizationModel(object):
         """Calculate the final distribution, for the pointer-generator model
 
         Args:
-          vocab_dists: The vocabulary distributions. List length max_dec_steps of (batch_size, vsize) arrays. The words are in the order they appear in the vocabulary file.
+          vocab_dists: The vocabulary distributions. List length max_dec_steps of (batch_size, vsize) arrays. 
+          The words are in the order they appear in the vocabulary file.
           attn_dists: The attention distributions. List length max_dec_steps of (batch_size, attn_len) arrays
 
         Returns:
@@ -381,7 +385,9 @@ class SummarizationModel(object):
         tf.logging.info('Time to build graph: %i seconds', t1 - t0)
 
     def run_train_step(self, sess, batch):
-        """Runs one training iteration. Returns a dictionary containing train op, summaries, loss, global_step and (optionally) coverage loss."""
+        """Runs one training iteration. 
+        Returns a dictionary containing train op, summaries, 
+        loss, global_step and (optionally) coverage loss."""
         feed_dict = self._make_feed_dict(batch)
         to_return = {
             'train_op': self._train_op,
@@ -394,7 +400,9 @@ class SummarizationModel(object):
         return sess.run(to_return, feed_dict)
 
     def run_eval_step(self, sess, batch):
-        """Runs one evaluation iteration. Returns a dictionary containing summaries, loss, global_step and (optionally) coverage loss."""
+        """Runs one evaluation iteration. 
+        Returns a dictionary containing summaries, 
+        loss, global_step and (optionally) coverage loss."""
         feed_dict = self._make_feed_dict(batch)
         to_return = {
             'summaries': self._summaries,

@@ -5,3 +5,5 @@
 
 prepare_data/*
 data/*
+
+*.sublime-*
