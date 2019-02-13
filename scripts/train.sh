@@ -18,5 +18,5 @@ python $BASELINE_CODE_DIR/run_summarization.py\
 	--data_path=$DATA_DIR/chunked/train_*\
 	--vocab_path=$DATA_DIR/vocab\
 	--log_root=$LOG_DIR\
-	--exp_name=$EXP_NAME &
+	--exp_name=$EXP_NAME
 
