@@ -82,10 +82,11 @@ class BeamSearchDecoder(object):
             else:
                 files = os.listdir(self._rouge_ref_dir)
                 n_ref = len(files) - 1
-                last_ref = max(files)
+                last_ref = os.path.join(self._rouge_ref_dir, max(files))
+
                 os.remove(last_ref)
                 tf.logging.info("remove the last ref file  %s to prevent corrpution." % last_ref)
-                last_ref = os.listdir(self._rouge_ref_dir) # the new last dec file
+                last_ref = os.path.join(self._rouge_ref_dir, max(os.listdir(self._rouge_ref_dir)))
 
             self._rouge_dec_dir = os.path.join(self._decode_dir, "decoded")
             if not os.path.exists(self._rouge_dec_dir):
@@ -93,10 +94,10 @@ class BeamSearchDecoder(object):
             else:
                 files = os.listdir(self._rouge_ref_dir)
                 n_dec = len(files) - 1
-                last_dec = max(files)
+                last_dec = os.path.join(self._rouge_dec_dir, max(files))
                 os.remove(last_dec)
                 tf.logging.info("remove the last dec file  %s to prevent corrpution." % last_dec)
-                last_dec = os.listdir(self._rouge_dec_dir) # the new last dec file
+                last_dec = os.path.join(self._rouge_dec_dir, max(os.listdir(self._rouge_dec_dir)))
 
             if n_ref == n_dec:
                 self._n_decoded = n_ref
