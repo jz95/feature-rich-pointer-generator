@@ -26,20 +26,34 @@ from tensorflow.python.ops import math_ops
 # In the future, it would make more sense to write variants on the attention mechanism using the new seq2seq library for tensorflow 1.0: https://www.tensorflow.org/api_guides/python/contrib.seq2seq#Attention
 
 
-def attention_decoder(decoder_inputs, initial_state, encoder_states, enc_padding_mask, cell, initial_state_attention=False, pointer_gen=True, use_coverage=False, prev_coverage=None):
+def attention_decoder(decoder_inputs, initial_state, encoder_states,
+                      enc_padding_mask, cell,
+                      initial_state_attention=False, pointer_gen=True,
+                      use_coverage=False, prev_coverage=None):
     """
     Args:
       decoder_inputs: A list of 2D Tensors [batch_size x input_size].
       initial_state: 2D Tensor [batch_size x cell.state_size].
       encoder_states: 3D Tensor [batch_size x attn_length x attn_size].
-      enc_padding_mask: 2D Tensor [batch_size x attn_length] containing 1s and 0s; indicates which of the encoder locations are padding (0) or a real token (1).
+      enc_padding_mask: 2D Tensor [batch_size x attn_length] containing 1s and 0s; 
+            indicates which of the encoder locations are padding (0) or a real token (1).
       cell: rnn_cell.RNNCell defining the cell function and size.
+
       initial_state_attention:
-        Note that this attention decoder passes each decoder input through a linear layer with the previous step's context vector to get a modified version of the input. If initial_state_attention is False, on the first decoder step the "previous context vector" is just a zero vector. If initial_state_attention is True, we use initial_state to (re)calculate the previous step's context vector. We set this to False for train/eval mode (because we call attention_decoder once for all decoder steps) and True for decode mode (because we call attention_decoder once for each decoder step).
+            Note that this attention decoder passes each decoder input through a linear layer 
+            with the previous step's context vector to get a modified version of the input. 
+            If initial_state_attention is False, on the first decoder step the "previous context vector" 
+            is just a zero vector. If initial_state_attention is True, we use initial_state to (re)calculate 
+            the previous step's context vector. We set this to False for train/eval mode (because we call 
+            attention_decoder once for all decoder steps) and True for decode mode (because we call 
+            attention_decoder once for each decoder step).
+
       pointer_gen: boolean. If True, calculate the generation probability p_gen for each decoder step.
       use_coverage: boolean. If True, use coverage mechanism.
       prev_coverage:
-        If not None, a tensor with shape (batch_size, attn_length). The previous step's coverage vector. This is only not None in decode mode when using coverage.
+        If not None, a tensor with shape (batch_size, attn_length). 
+        The previous step's coverage vector. 
+        This is only not None in decode mode when using coverage.
 
     Returns:
       outputs: A list of the same length as decoder_inputs of 2D Tensors of
@@ -163,7 +177,9 @@ def attention_decoder(decoder_inputs, initial_state, encoder_states, enc_padding
         # Ensure the second shape of attention vectors is set.
         context_vector.set_shape([None, attn_size])
         if initial_state_attention:  # true in decode mode
-            # Re-calculate the context vector from the previous step so that we can pass it through a linear layer with this step's input to get a modified version of the input
+            # Re-calculate the context vector from the previous step
+            # so that we can pass it through a linear layer with this step's input
+            # to get a modified version of the input
             # in decode mode, this is what updates the coverage vector
             context_vector, _, coverage = attention(initial_state, coverage)
         for i, inp in enumerate(decoder_inputs):
@@ -205,7 +221,8 @@ def attention_decoder(decoder_inputs, initial_state, encoder_states, enc_padding
                     p_gen = tf.sigmoid(p_gen)
                     p_gens.append(p_gen)
 
-            # Concatenate the cell_output (= decoder state) and the context vector, and pass them through a linear layer
+            # Concatenate the cell_output (= decoder state) and the context vector,
+            # and pass them through a linear layer
             # This is V[s_t, h*_t] + b in the paper
             with variable_scope.variable_scope("AttnOutputProjection"):
                 output = linear([cell_output] + [context_vector],

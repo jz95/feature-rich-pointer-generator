@@ -14,7 +14,10 @@
 # limitations under the License.
 # ==============================================================================
 
-"""This file contains code to run beam search decoding, including running ROUGE evaluation and producing JSON datafiles for the in-browser attention visualizer, which can be found here https://github.com/abisee/attn_vis"""
+"""This file contains code to run beam search decoding,
+including running ROUGE evaluation and producing JSON datafiles for
+the in-browser attention visualizer,
+which can be found here https://github.com/abisee/attn_vis"""
 
 import os
 import time
@@ -49,6 +52,7 @@ class BeamSearchDecoder(object):
         self._vocab = vocab
         self._saver = tf.train.Saver()  # we use this to load checkpoints for decoding
         self._sess = tf.Session(config=util.get_config())
+        self._n_decoded = 0
 
         # Load an initial checkpoint to use for decoding
         ckpt_path = util.load_ckpt(self._saver, self._sess)
@@ -60,8 +64,8 @@ class BeamSearchDecoder(object):
             self._decode_dir = os.path.join(
                 FLAGS.log_root, get_decode_dir_name(ckpt_name))
             if os.path.exists(self._decode_dir):
-                raise Exception(
-                    "single_pass decode directory %s should not already exist" % self._decode_dir)
+                tf.logging.info(
+                    "single_pass decode directory %s already exist, we will continue decoding." % self._decode_dir)
 
         else:  # Generic decode dir name
             self._decode_dir = os.path.join(FLAGS.log_root, "decode")
@@ -75,16 +79,45 @@ class BeamSearchDecoder(object):
             self._rouge_ref_dir = os.path.join(self._decode_dir, "reference")
             if not os.path.exists(self._rouge_ref_dir):
                 os.mkdir(self._rouge_ref_dir)
+            else:
+                files = os.listdir(self._rouge_ref_dir)
+                n_ref = len(files) - 1
+                last_ref = max(files)
+                os.remove(last_ref)
+                tf.logging.info("remove the last ref file  %s to prevent corrpution." % last_ref)
+                last_ref = os.listdir(self._rouge_ref_dir) # the new last dec file
+
             self._rouge_dec_dir = os.path.join(self._decode_dir, "decoded")
             if not os.path.exists(self._rouge_dec_dir):
                 os.mkdir(self._rouge_dec_dir)
+            else:
+                files = os.listdir(self._rouge_ref_dir)
+                n_dec = len(files) - 1
+                last_dec = max(files)
+                os.remove(last_dec)
+                tf.logging.info("remove the last dec file  %s to prevent corrpution." % last_dec)
+                last_dec = os.listdir(self._rouge_dec_dir) # the new last dec file
+
+            if n_ref == n_dec:
+                self._n_decoded = n_ref
+            elif n_ref > n_dec:
+                # remove the last ref file
+                os.remove(last_ref)
+                self._n_decoded = n_dec
+            else:
+                os.remove(last_dec)
+                self._n_decoded = n_ref
+            tf.logging.info("we already have %d files in the single_pass dir % s, now continue to decode." % (self._n_decoded, self._decode_dir))
 
     def decode(self):
-        """Decode examples until data is exhausted (if FLAGS.single_pass) and return, or decode indefinitely, loading latest checkpoint at regular intervals"""
+        """Decode examples until data is exhausted (if FLAGS.single_pass) and return, 
+        or decode indefinitely, loading latest checkpoint at regular intervals"""
         t0 = time.time()
         counter = 0
         while True:
             batch = self._batcher.next_batch()  # 1 example repeated across batch
+            if counter < self._n_decoded:
+                continue
             if batch is None:  # finished decoding dataset in single_pass mode
                 assert FLAGS.single_pass, "Dataset exhausted, but we are not in single_pass mode"
                 tf.logging.info(
@@ -128,7 +161,6 @@ class BeamSearchDecoder(object):
                 # write ref summary and decoded summary to file, to eval with pyrouge later
                 self.write_for_rouge(
                     original_abstract_sents, decoded_words, counter)
-                counter += 1  # this is how many examples we've decoded
             else:
                 print_results(article_withunks, abstract_withunks,
                               decoded_output)  # log output to screen
@@ -143,6 +175,7 @@ class BeamSearchDecoder(object):
                         'We\'ve been decoding with same checkpoint for %i seconds. Time to load new checkpoint', t1 - t0)
                     _ = util.load_ckpt(self._saver, self._sess)
                     t0 = time.time()
+            counter += 1  # this is how many examples we've decoded
 
     def write_for_rouge(self, reference_sents, decoded_words, ex_index):
         """Write output to file in correct format for eval with pyrouge. This is called in single_pass mode.
@@ -269,7 +302,9 @@ def rouge_log(results_dict, dir_to_write):
 
 
 def get_decode_dir_name(ckpt_name):
-    """Make a descriptive name for the decode dir, including the name of the checkpoint we use to decode. This is called in single_pass mode."""
+    """Make a descriptive name for the decode dir,
+    including the name of the checkpoint we use to decode.
+    This is called in single_pass mode."""
 
     if "train" in FLAGS.data_path:
         dataset = "train"

@@ -39,7 +39,12 @@ tf.app.flags.DEFINE_string(
 
 # Important settings
 tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
-tf.app.flags.DEFINE_boolean('single_pass', False, 'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, write the summaries to file and then get ROUGE scores for the whole dataset. If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
+tf.app.flags.DEFINE_boolean('single_pass', False, 
+    'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, \
+    i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, \
+    write the summaries to file and then get ROUGE scores for the whole dataset. \
+    If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, \
+    use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
 
 # Where to save output
 tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
@@ -60,7 +65,10 @@ tf.app.flags.DEFINE_integer(
 tf.app.flags.DEFINE_integer(
     'min_dec_steps', 35, 'Minimum sequence length of generated summary. Applies only for beam search decoding mode')
 tf.app.flags.DEFINE_integer(
-    'vocab_size', 50000, 'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
+    'vocab_size', 50000, 'Size of vocabulary. \
+    These will be read from the vocabulary file in order. \
+    If the vocabulary file contains fewer words than this number, \
+    or if this number is set to 0, will take all words in the vocabulary file.')
 tf.app.flags.DEFINE_float('lr', 0.15, 'learning rate')
 tf.app.flags.DEFINE_float('adagrad_init_acc', 0.1,
                           'initial accumulator value for Adagrad')
@@ -75,14 +83,24 @@ tf.app.flags.DEFINE_boolean(
     'pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
 
 # Coverage hyperparameters
-tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')
+tf.app.flags.DEFINE_boolean('coverage', False,
+    'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged,\
+     and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, \
+     turn this off for most of training then turn on for a short phase at the end.')
 tf.app.flags.DEFINE_float(
-    'cov_loss_wt', 1.0, 'Weight of coverage loss (lambda in the paper). If zero, then no incentive to minimize coverage loss.')
+    'cov_loss_wt', 1.0, 'Weight of coverage loss (lambda in the paper). \
+    If zero, then no incentive to minimize coverage loss.')
 
 # Utility flags, for restoring and changing checkpoints
-tf.app.flags.DEFINE_boolean('convert_to_coverage_model', False, 'Convert a non-coverage model to a coverage model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
+tf.app.flags.DEFINE_boolean('convert_to_coverage_model', False, 
+    'Convert a non-coverage model to a coverage model. \
+    Turn this on and run in train mode. Your current training model will be copied to a new version\
+     (same name with _cov_init appended) that will be ready to run with coverage flag turned on,\
+      for the coverage training stage.')
 tf.app.flags.DEFINE_boolean('restore_best_model', False,
-                            'Restore the best model in the eval/ dir and save it in the train/ dir, ready to be used for further training. Useful for early stopping, or if your training checkpoint has become corrupted with e.g. NaN values.')
+                            'Restore the best model in the eval/ dir and save it in the train/ dir,\
+                             ready to be used for further training. Useful for early stopping, \
+                             or if your training checkpoint has become corrupted with e.g. NaN values.')
 
 # Debugging. See https://www.tensorflow.org/programmers_guide/debugger
 tf.app.flags.DEFINE_boolean(
@@ -188,6 +206,8 @@ def setup_training(model, batcher):
         restore_best_model()
     saver = tf.train.Saver(max_to_keep=3)  # keep 3 checkpoints at a time
 
+    # supervisor would load the latest ckpt automatically
+    # which allows continuing training
     sv = tf.train.Supervisor(logdir=train_dir,
                              is_chief=True,
                              saver=saver,
@@ -270,6 +290,7 @@ def run_eval(model, batcher, vocab):
     best_loss = None  # will hold the best loss achieved so far
 
     while True:
+        # during eval mode, model should load the latest ckpt manually
         _ = util.load_ckpt(saver, sess)  # load a new checkpoint
         batch = batcher.next_batch()  # get the next batch
 
@@ -363,7 +384,10 @@ def main(unused_argv):
         run_eval(model, batcher, vocab)
     elif hps.mode == 'decode':
         decode_model_hps = hps  # This will be the hyperparameters for the decoder model
-        # The model is configured with max_dec_steps=1 because we only ever run one step of the decoder at a time (to do beam search). Note that the batcher is initialized with max_dec_steps equal to e.g. 100 because the batches need to contain the full summaries
+        # The model is configured with max_dec_steps=1
+        # because we only ever run one step of the decoder at a time (to do beam search). 
+        # Note that the batcher is initialized with max_dec_steps equal to 
+        # e.g. 100 because the batches need to contain the full summaries
         decode_model_hps = hps._replace(max_dec_steps=1)
         model = SummarizationModel(decode_model_hps, vocab)
         decoder = BeamSearchDecoder(model, batcher, vocab)
