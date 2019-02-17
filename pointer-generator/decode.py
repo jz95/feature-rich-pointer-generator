@@ -77,35 +77,41 @@ class BeamSearchDecoder(object):
         if FLAGS.single_pass:
             # Make the dirs to contain output written in the correct format for pyrouge
             self._rouge_ref_dir = os.path.join(self._decode_dir, "reference")
+            n_ref = 0
             if not os.path.exists(self._rouge_ref_dir):
                 os.mkdir(self._rouge_ref_dir)
             else:
                 files = os.listdir(self._rouge_ref_dir)
-                n_ref = len(files) - 1
-                last_ref = os.path.join(self._rouge_ref_dir, max(files))
-
-                os.remove(last_ref)
-                tf.logging.info("remove the last ref file  %s to prevent corrpution." % last_ref)
-                last_ref = os.path.join(self._rouge_ref_dir, max(os.listdir(self._rouge_ref_dir)))
+                n_ref = len(files)
+                if n_ref:
+                    last_ref = os.path.join(self._rouge_ref_dir, max(files))
+                    os.remove(last_ref)
+                    tf.logging.info("remove the last ref file  %s to prevent corrpution." % last_ref)
+                    n_ref -= 1
 
             self._rouge_dec_dir = os.path.join(self._decode_dir, "decoded")
+            n_dec = 0
             if not os.path.exists(self._rouge_dec_dir):
                 os.mkdir(self._rouge_dec_dir)
             else:
-                files = os.listdir(self._rouge_ref_dir)
-                n_dec = len(files) - 1
-                last_dec = os.path.join(self._rouge_dec_dir, max(files))
-                os.remove(last_dec)
-                tf.logging.info("remove the last dec file  %s to prevent corrpution." % last_dec)
-                last_dec = os.path.join(self._rouge_dec_dir, max(os.listdir(self._rouge_dec_dir)))
+                files = os.listdir(self._rouge_dec_dir)
+                n_dec = len(files)
+                if n_dec:
+                    last_dec = os.path.join(self._rouge_dec_dir, max(files))
+                    os.remove(last_dec)
+                    tf.logging.info("remove the last dec file  %s to prevent corrpution." % last_dec)
+                    n_dec -= 1
 
+            assert n_ref >= 0 and n_dec >= 0
             if n_ref == n_dec:
                 self._n_decoded = n_ref
             elif n_ref > n_dec:
                 # remove the last ref file
+                last_ref = os.path.join(self._rouge_dec_dir, max(os.listdir(self._rouge_ref_dir)))
                 os.remove(last_ref)
                 self._n_decoded = n_dec
             else:
+                last_dec = os.path.join(self._rouge_dec_dir, max(os.listdir(self._rouge_dec_dir)))
                 os.remove(last_dec)
                 self._n_decoded = n_ref
             tf.logging.info("we already have %d files in the single_pass dir % s, now continue to decode." % (self._n_decoded, self._decode_dir))
@@ -118,7 +124,9 @@ class BeamSearchDecoder(object):
         while True:
             batch = self._batcher.next_batch()  # 1 example repeated across batch
             if counter < self._n_decoded:
+                counter += 1
                 continue
+
             if batch is None:  # finished decoding dataset in single_pass mode
                 assert FLAGS.single_pass, "Dataset exhausted, but we are not in single_pass mode"
                 tf.logging.info(
