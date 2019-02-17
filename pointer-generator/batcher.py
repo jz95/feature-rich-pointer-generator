@@ -29,7 +29,9 @@ class Example(object):
     """Class representing a train/val/test example for text summarization."""
 
     def __init__(self, article, abstract_sentences, vocab, hps):
-        """Initializes the Example, performing tokenization and truncation to produce the encoder, decoder and target sequences, which are stored in self.
+        """
+        UPDATE: add one more parameter vocab_pos
+        Initializes the Example, performing tokenization and truncation to produce the encoder, decoder and target sequences, which are stored in self.
 
         Args:
           article: source text; a string. each token is separated by a single space.
@@ -51,6 +53,8 @@ class Example(object):
         self.enc_len = len(article_words)
         # list of word ids; OOVs are represented by the id for UNK token
         self.enc_input = [vocab.word2id(w) for w in article_words]
+        # list of pos ids
+        self.enc_input_pos = [vocab.word2pos_id(w) for w in article_words]
 
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
@@ -83,7 +87,9 @@ class Example(object):
         self.original_abstract_sents = abstract_sentences
 
     def get_dec_inp_targ_seqs(self, sequence, max_len, start_id, stop_id):
-        """Given the reference summary as a sequence of tokens, return the input sequence for the decoder, and the target sequence which we will use to calculate loss. The sequence will be truncated if it is longer than max_len. The input sequence must start with the start_id and the target sequence must end with the stop_id (but not if it's been truncated).
+        """
+        Given the abstract sequences(id), return the sequence added start&end id, and to make sure its length is within max_lengh.
+        Given the reference summary as a sequence of tokens, return the input sequence for the decoder, and the target sequence which we will use to calculate loss. The sequence will be truncated if it is longer than max_len. The input sequence must start with the start_id and the target sequence must end with the stop_id (but not if it's been truncated).
 
         Args:
           sequence: List of ids (integers)
@@ -133,7 +139,7 @@ class Batch(object):
            vocab: Vocabulary object
         """
         self.pad_id = vocab.word2id(
-            data.PAD_TOKEN)  # id of the PAD token used to pad sequences
+            data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
         # initialize the input to the encoder
         self.init_encoder_seq(example_list, hps)
         # initialize the input and targets for the decoder
@@ -157,8 +163,10 @@ class Batch(object):
             self.enc_batch_extend_vocab:
               Same as self.enc_batch, but in-article OOVs are represented by their temporary article OOV number.
         """
-        # Determine the maximum length of the encoder input sequence in this batch
-        max_enc_seq_len = max([ex.enc_len for ex in example_list])
+        # Determine the maximum length of the word input sequence in this batch
+        self.max_word_seq_len = max([ex.enc_len for ex in example_list])  # modify this constant to be a self variable
+        # The maximum lenght of encoder sequence (word sequence + pos tags + character sequence)
+        max_enc_seq_len = 2 * self.max_word_seq_len  # TO BE CONTINUED (character sequence)
 
         # Pad the encoder input sequences up to the length of the longest sequence
         for ex in example_list:
@@ -166,18 +174,30 @@ class Batch(object):
 
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
+
+        # self.enc_batch = np.zeros(
+        #     (hps.batch_size, max_enc_seq_len), dtype=np.int32)
+
         self.enc_batch = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.int32)
         self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
         self.enc_padding_mask = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.float32)
 
-        # Fill in the numpy arrays
+        # Fill in the numpy arrays with word sequences
         for i, ex in enumerate(example_list):
             self.enc_batch[i, :] = ex.enc_input[:]
             self.enc_lens[i] = ex.enc_len
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
+
+        # Fill in the numpy arrays with pos tags
+        for i, ex in enumerate(example_list):
+            self.enc_batch[i][self.max_word_seq_len:] = ex.enc_input_pos[:]
+            self.enc_lens[i] = ex.enc_len
+            for j in range(ex.enc_len):
+                self.enc_padding_mask[i][j+self.max_word_seq_len] = 1
+
 
         # For pointer-generator mode, need to store some extra info
         if hps.pointer_gen:
@@ -275,12 +295,12 @@ class Batcher(object):
         self._example_q_threads = []
         for _ in range(self._num_example_q_threads):
             self._example_q_threads.append(
-                Thread(target=self.fill_example_queue))
+                Thread(target=self.fill_example_queue))  # use Thread to fill example queue with examples
             self._example_q_threads[-1].daemon = True
             self._example_q_threads[-1].start()
         self._batch_q_threads = []
         for _ in range(self._num_batch_q_threads):
-            self._batch_q_threads.append(Thread(target=self.fill_batch_queue))
+            self._batch_q_threads.append(Thread(target=self.fill_batch_queue))  # use Thread to fill batch queue with examples
             self._batch_q_threads[-1].daemon = True
             self._batch_q_threads[-1].start()
 
@@ -312,7 +332,7 @@ class Batcher(object):
 
     def fill_example_queue(self):
         """Reads data from file and processes into Examples which are then placed into the example queue."""
-
+        """one example means one pair of article and target summary"""
         input_gen = self.text_generator(
             data.example_generator(self._data_path, self._single_pass))
 
@@ -342,7 +362,7 @@ class Batcher(object):
             self._example_queue.put(example)
 
     def fill_batch_queue(self):
-        """Takes Examples out of example queue, sorts them by encoder sequence length, processes into Batches and places them in the batch queue.
+        """Takes Examples out of example queue (inputs), sorts them by encoder sequence length, processes into Batches and places them in the batch queue.
 
         In decode mode, makes batches that each contain a single example repeated.
         """
@@ -351,7 +371,7 @@ class Batcher(object):
                 # Get bucketing_cache_size-many batches of Examples into a list, then sort
                 inputs = []
                 for _ in range(self._hps.batch_size * self._bucketing_cache_size):
-                    inputs.append(self._example_queue.get())
+                    inputs.append(self._example_queue.get())  # takes examples from example queue
                 # sort by length of encoder sequence
                 inputs = sorted(inputs, key=lambda inp: inp.enc_len)
 
@@ -362,7 +382,7 @@ class Batcher(object):
                 if not self._single_pass:
                     shuffle(batches)
                 for b in batches:  # each b is a list of Example objects
-                    self._batch_queue.put(Batch(b, self._hps, self._vocab))
+                    self._batch_queue.put(Batch(b, self._hps, self._vocab))  # put examples into Batch object
 
             else:  # beam search decode mode
                 ex = self._example_queue.get()
