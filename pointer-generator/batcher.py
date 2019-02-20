@@ -164,9 +164,9 @@ class Batch(object):
               Same as self.enc_batch, but in-article OOVs are represented by their temporary article OOV number.
         """
         # Determine the maximum length of the word input sequence in this batch
-        self.max_word_seq_len = max([ex.enc_len for ex in example_list])  # modify this constant to be a self variable
-        # The maximum lenght of encoder sequence (word sequence + pos tags + character sequence)
-        max_enc_seq_len = 2 * self.max_word_seq_len  # TO BE CONTINUED (character sequence)
+        max_word_seq_len = max([ex.enc_len for ex in example_list])
+        # The maximum lengh of encoder sequence (word sequence = pos tags)
+        max_enc_seq_len = max_word_seq_len  # TO BE CONTINUED (character sequence)
 
         # Pad the encoder input sequences up to the length of the longest sequence
         for ex in example_list:
@@ -175,29 +175,24 @@ class Batch(object):
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
 
-        # self.enc_batch = np.zeros(
-        #     (hps.batch_size, max_enc_seq_len), dtype=np.int32)
-
         self.enc_batch = np.zeros(
+            (hps.batch_size, max_enc_seq_len), dtype=np.int32)
+        self.enc_batch_pos = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.int32)
         self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
         self.enc_padding_mask = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.float32)
+        self.enc_padding_mask_pos = np.zeros(
+            (hps.batch_size, max_enc_seq_len), dtype=np.float32)
 
-        # Fill in the numpy arrays with word sequences
+        # Fill in the numpy arrays with word sequences and pos tags
         for i, ex in enumerate(example_list):
             self.enc_batch[i, :] = ex.enc_input[:]
+            self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
             self.enc_lens[i] = ex.enc_len
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
-
-        # Fill in the numpy arrays with pos tags
-        for i, ex in enumerate(example_list):
-            self.enc_batch[i][self.max_word_seq_len:] = ex.enc_input_pos[:]
-            self.enc_lens[i] = ex.enc_len
-            for j in range(ex.enc_len):
-                self.enc_padding_mask[i][j+self.max_word_seq_len] = 1
-
+                self.enc_padding_mask_pos[i][j] = 1
 
         # For pointer-generator mode, need to store some extra info
         if hps.pointer_gen:
@@ -210,8 +205,7 @@ class Batch(object):
             self.enc_batch_extend_vocab = np.zeros(
                 (hps.batch_size, max_enc_seq_len), dtype=np.int32)
             for i, ex in enumerate(example_list):
-                self.enc_batch_extend_vocab[i,
-                                            :] = ex.enc_input_extend_vocab[:]
+                self.enc_batch_extend_vocab[i, :] = ex.enc_input_extend_vocab[:]
 
     def init_decoder_seq(self, example_list, hps):
         """Initializes the following:
