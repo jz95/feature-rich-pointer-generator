@@ -185,7 +185,7 @@ class Batch(object):
         self.enc_padding_mask_pos = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.float32)
 
-        # Fill in the numpy arrays with word sequences and pos tag sequences
+        # Fill in the numpy arrays with word sequences and pos tags sequence
         for i, ex in enumerate(example_list):
             self.enc_batch[i, :] = ex.enc_input[:]
             self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
