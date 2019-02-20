@@ -40,10 +40,14 @@ class SummarizationModel(object):
         # encoder part
         self._enc_batch = tf.placeholder(
             tf.int32, [hps.batch_size, None], name='enc_batch')
+        self._enc_batch_pos = tf.placeholder(
+            tf.int32, [hps.batch_size, None], name='enc_batch_pos')  # Add tf.placehoder for pos_tag batches
         self._enc_lens = tf.placeholder(
             tf.int32, [hps.batch_size], name='enc_lens')
         self._enc_padding_mask = tf.placeholder(
             tf.float32, [hps.batch_size, None], name='enc_padding_mask')
+        self._enc_padding_mask_pos = tf.placeholder(
+            tf.float32, [hps.batch_size, None], name='enc_padding_mask_pos')  # Add tf.placeholder for pos padding mask
         if FLAGS.pointer_gen:
             self._enc_batch_extend_vocab = tf.placeholder(
                 tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
@@ -71,8 +75,10 @@ class SummarizationModel(object):
         """
         feed_dict = {}
         feed_dict[self._enc_batch] = batch.enc_batch
+        feed_dict[self._enc_batch_pos] = batch.enc_batch_pos
         feed_dict[self._enc_lens] = batch.enc_lens
         feed_dict[self._enc_padding_mask] = batch.enc_padding_mask
+        feed_dict[self._enc_padding_mask_pos] = batch.enc_padding_mask_pos
         if FLAGS.pointer_gen:
             feed_dict[self._enc_batch_extend_vocab] = batch.enc_batch_extend_vocab
             feed_dict[self._max_art_oovs] = batch.max_art_oovs
@@ -248,7 +254,7 @@ class SummarizationModel(object):
             self.trunc_norm_init = tf.truncated_normal_initializer(
                 stddev=hps.trunc_norm_init_std)
 
-            # Add embedding matrix (shared by the encoder and decoder inputs)
+            # Add word embedding matrix (shared by the encoder and decoder inputs)
             with tf.variable_scope('embedding'):
                 embedding = tf.get_variable('embedding', [
                                             vsize, hps.emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
@@ -260,13 +266,34 @@ class SummarizationModel(object):
                 emb_dec_inputs = [tf.nn.embedding_lookup(embedding, x) for x in tf.unstack(
                     self._dec_batch, axis=1)]  # list length max_dec_steps containing shape (batch_size, emb_size)
 
-            # Add the encoder.
+            # Add the encoder for word level features
             enc_outputs, fw_st, bw_st = self._add_encoder(
                 emb_enc_inputs, self._enc_lens)
+
             self._enc_states = enc_outputs
 
+            # Add pos embedding matrix (shared by the encoder and decoder inputs)
+            with tf.variable_scope('embedding_pos'):
+                embedding_pos = tf.get_variable('embedding_pos', [
+                                            vsize, hps.pos_emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+                if hps.mode == "train":
+                    self._add_emb_vis(embedding_pos)  # add to tensorboard
+                # tensor with shape (batch_size, max_enc_steps, emb_size)
+                emb_enc_pos_inputs = tf.nn.embedding_lookup(
+                    embedding_pos, self._enc_batch)
+                emb_dec_pos_inputs = [tf.nn.embedding_lookup(embedding_pos, x) for x in tf.unstack(
+                    self._dec_batch, axis=1)]  # list length max_dec_steps containing shape (batch_size, emb_size)
+
+            # Add the encoder for pos tag features
+            enc_pos_outputs, fw_pos_st, bw_pos_st = self._add_encoder(
+                emb_enc_pos_inputs, self._enc_lens)
+
+            self._enc_pos_states = enc_pos_outputs
+
             # Our encoder is bidirectional and our decoder is unidirectional so we need to reduce the final encoder hidden state to the right size to be the initial decoder hidden state
-            self._dec_in_state = self._reduce_states(fw_st, bw_st)
+            # Make self._dec_in_state a list, containing the hidden states of words and pos
+            # self._dec_in_state = [self._reduce_states(fw_st, bw_st), self._reduce_states(fw_pos_st, bw_pos_st)]
+            # Put decoder inputs for word level and pos tags into one single list
 
             # Add the decoder.
             with tf.variable_scope('decoder'):
