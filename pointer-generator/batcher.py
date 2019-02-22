@@ -293,7 +293,8 @@ class Batcher(object):
     def next_batch(self):
         """Return a Batch from the batch queue.
 
-        If mode='decode' then each batch contains a single example repeated beam_size-many times; this is necessary for beam search.
+        If mode='decode' then each batch contains a single example
+        repeated beam_size-many times; this is necessary for beam search.
 
         Returns:
           batch: a Batch object, or None if we're in single_pass mode and we've exhausted the dataset.
@@ -342,8 +343,8 @@ class Batcher(object):
             self._example_queue.put(example)
 
     def fill_batch_queue(self):
-        """Takes Examples out of example queue, sorts them by encoder sequence length, processes into Batches and places them in the batch queue.
-
+        """Takes Examples out of example queue, sorts them by encoder sequence length,
+        processes into Batches and places them in the batch queue.
         In decode mode, makes batches that each contain a single example repeated.
         """
         while True:
@@ -399,11 +400,9 @@ class Batcher(object):
             e = next(example_generator)  # e is a tf.Example
             try:
                 # the article text was saved under the key 'article' in the data files
-                article_text = e.features.feature['article'].bytes_list.value[0].decode(
-                )
+                article_text = e.features.feature['article'].bytes_list.value[0].decode()
                 # the abstract text was saved under the key 'abstract' in the data files
-                abstract_text = e.features.feature['abstract'].bytes_list.value[0].decode(
-                )
+                abstract_text = e.features.feature['abstract'].bytes_list.value[0].decode()
             except ValueError:
                 tf.logging.error(
                     'Failed to get article or abstract from example')

@@ -7,5 +7,15 @@ This is our Workspace for MLP project. Check the [google docs](https://docs.goog
 3. move the `data` folder into the ROOT path of our porject.
 3. run the SHELL scripts in the folder `scripts`.
 
+## Set pyrouge properly.
+1. install python wrapper for ROUGE
+```
+pip install pyrouge
+```
+2. set rouge path
+```
+pyrouge_set_rouge_path /absolute/path/to/mlp_proj/ROUGE-1.5.5
+```
+3. run evaluation in dir scripts
 
 ### see scripts and comments for detailed explaination

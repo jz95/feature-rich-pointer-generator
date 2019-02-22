@@ -162,9 +162,12 @@ def article2ids(article_words, vocab):
 
     Returns:
       ids:
-        A list of word ids (integers); OOVs are represented by their temporary article OOV number. If the vocabulary size is 50k and the article has 3 OOVs, then these temporary OOV numbers will be 50000, 50001, 50002.
+        A list of word ids (integers); OOVs are represented by 
+        their temporary article OOV number. If the vocabulary size is 50k and 
+        the article has 3 OOVs, then these temporary OOV numbers will be 50000, 50001, 50002.
       oovs:
-        A list of the OOV words in the article (strings), in the order corresponding to their temporary article OOV numbers."""
+        A list of the OOV words in the article (strings), 
+        in the order corresponding to their temporary article OOV numbers."""
     ids = []
     oovs = []
     unk_id = vocab.word2id(UNKNOWN_TOKEN)
@@ -188,10 +191,12 @@ def abstract2ids(abstract_words, vocab, article_oovs):
     Args:
       abstract_words: list of words (strings)
       vocab: Vocabulary object
-      article_oovs: list of in-article OOV words (strings), in the order corresponding to their temporary article OOV numbers
+      article_oovs: list of in-article OOV words (strings), 
+      in the order corresponding to their temporary article OOV numbers
 
     Returns:
-      ids: List of ids (integers). In-article OOV words are mapped to their temporary OOV numbers. Out-of-article OOV words are mapped to the UNK token id."""
+      ids: List of ids (integers). In-article OOV words are mapped to their temporary OOV numbers. 
+      Out-of-article OOV words are mapped to the UNK token id."""
     ids = []
     unk_id = vocab.word2id(UNKNOWN_TOKEN)
     for w in abstract_words:
@@ -209,12 +214,15 @@ def abstract2ids(abstract_words, vocab, article_oovs):
 
 
 def outputids2words(id_list, vocab, article_oovs):
-    """Maps output ids to words, including mapping in-article OOVs from their temporary ids to the original OOV string (applicable in pointer-generator mode).
+    """Maps output ids to words, including mapping in-article OOVs 
+    from their temporary ids to the original OOV string (applicable in pointer-generator mode).
 
     Args:
       id_list: list of ids (integers)
       vocab: Vocabulary object
-      article_oovs: list of OOV words (strings) in the order corresponding to their temporary article OOV ids (that have been assigned in pointer-generator mode), or None (in baseline mode)
+      article_oovs: list of OOV words (strings) in the order corresponding 
+      to their temporary article OOV ids (that have been assigned in pointer-generator mode), 
+      or None (in baseline mode)
 
     Returns:
       words: list of words (strings)
