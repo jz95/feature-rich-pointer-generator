@@ -78,7 +78,7 @@ class SummarizationModel(object):
         feed_dict[self._enc_batch_pos] = batch.enc_batch_pos
         feed_dict[self._enc_lens] = batch.enc_lens
         feed_dict[self._enc_padding_mask] = batch.enc_padding_mask
-        feed_dict[self._enc_padding_mask_pos] = batch.enc_padding_mask_pos
+        # feed_dict[self._enc_padding_mask_pos] = batch.enc_padding_mask_pos
         if FLAGS.pointer_gen:
             feed_dict[self._enc_batch_extend_vocab] = batch.enc_batch_extend_vocab
             feed_dict[self._max_art_oovs] = batch.max_art_oovs
@@ -142,7 +142,43 @@ class SummarizationModel(object):
             # Concatenation of fw and bw state
             old_h = tf.concat(axis=1, values=[fw_st.h, bw_st.h])
             # Get new cell from old cell
-            new_c = tf.nn.relu(tf.matmul(old_c, w_reduce_c) + bias_reduce_c)
+            new_c = tf.nn.relu(tf.matmul(old_c, w_reduce_c) + bias_reduce_c)  # [batch_size * hidden_dim]
+            # Get new state from old state
+            new_h = tf.nn.relu(tf.matmul(old_h, w_reduce_h) + bias_reduce_h)
+            # Return new cell and state
+            return tf.contrib.rnn.LSTMStateTuple(new_c, new_h)
+
+    def _reduce_states_pos(self, fw_st, bw_st, fw_st_pos, bw_st_pos):
+        """Add to the graph a linear layer to reduce the encoder's final FW and BW state into a single initial state for the decoder.
+        This is needed because the encoder is bidirectional but the decoder is not.
+
+        Args:
+          fw_st: LSTMStateTuple with hidden_dim units.
+          bw_st: LSTMStateTuple with hidden_dim units.
+
+        Returns:
+          state: LSTMStateTuple with hidden_dim units.
+        """
+        hidden_dim = self._hps.hidden_dim
+        with tf.variable_scope('reduce_final_st'):
+
+            # Define weights and biases to reduce the cell and reduce the state
+            w_reduce_c = tf.get_variable('w_reduce_c', [
+                                         hidden_dim * 4, hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+            w_reduce_h = tf.get_variable('w_reduce_h', [
+                                         hidden_dim * 4, hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+            bias_reduce_c = tf.get_variable(
+                'bias_reduce_c', [hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+            bias_reduce_h = tf.get_variable(
+                'bias_reduce_h', [hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+
+            # Apply linear layer
+            # Concatenation of fw and bw cell
+            old_c = tf.concat(axis=1, values=[fw_st.c, bw_st.c, fw_st_pos.c, bw_st_pos.c])
+            # Concatenation of fw and bw state
+            old_h = tf.concat(axis=1, values=[fw_st.h, bw_st.h, fw_st_pos.h, bw_st_pos.h])
+            # Get new cell from old cell
+            new_c = tf.nn.relu(tf.matmul(old_c, w_reduce_c) + bias_reduce_c)  # [batch_size * hidden_dim]
             # Get new state from old state
             new_h = tf.nn.relu(tf.matmul(old_h, w_reduce_h) + bias_reduce_h)
             # Return new cell and state
@@ -270,7 +306,7 @@ class SummarizationModel(object):
             enc_outputs, fw_st, bw_st = self._add_encoder(
                 emb_enc_inputs, self._enc_lens)
 
-            self._enc_states = enc_outputs
+            # self._enc_states = enc_outputs
 
             # Add pos embedding matrix (shared by the encoder and decoder inputs)
             with tf.variable_scope('embedding_pos'):
@@ -281,19 +317,19 @@ class SummarizationModel(object):
                 # tensor with shape (batch_size, max_enc_steps, emb_size)
                 emb_enc_pos_inputs = tf.nn.embedding_lookup(
                     embedding_pos, self._enc_batch)
-                emb_dec_pos_inputs = [tf.nn.embedding_lookup(embedding_pos, x) for x in tf.unstack(
-                    self._dec_batch, axis=1)]  # list length max_dec_steps containing shape (batch_size, emb_size)
+                # emb_dec_pos_inputs = [tf.nn.embedding_lookup(embedding_pos, x) for x in tf.unstack(
+                #     self._dec_batch, axis=1)]  # list length max_dec_steps containing shape (batch_size, emb_size)
 
             # Add the encoder for pos tag features
-            enc_pos_outputs, fw_pos_st, bw_pos_st = self._add_encoder(
+            enc_pos_outputs, fw_st_pos, bw_st_pos = self._add_encoder(
                 emb_enc_pos_inputs, self._enc_lens)
 
-            self._enc_pos_states = enc_pos_outputs
+            # self._enc_pos_states = enc_pos_outputs
+            self._enc_states = tf.concat([enc_outputs, enc_pos_outputs], axis=1)
 
             # Our encoder is bidirectional and our decoder is unidirectional so we need to reduce the final encoder hidden state to the right size to be the initial decoder hidden state
             # Make self._dec_in_state a list, containing the hidden states of words and pos
-            # self._dec_in_state = [self._reduce_states(fw_st, bw_st), self._reduce_states(fw_pos_st, bw_pos_st)]
-            # Put decoder inputs for word level and pos tags into one single list
+            self._dec_in_state = self._reduce_states_pos(fw_st, bw_st, fw_st_pos, bw_st_pos)
 
             # Add the decoder.
             with tf.variable_scope('decoder'):

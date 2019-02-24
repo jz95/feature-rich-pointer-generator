@@ -54,7 +54,7 @@ class Example(object):
         # list of word ids; OOVs are represented by the id for UNK token
         self.enc_input = [vocab.word2id(w) for w in article_words]
         # list of pos ids
-        self.enc_input_pos = [vocab.word2pos_id(w) for w in article_words]
+        self.enc_input_pos = vocab.word2pos_id(article_words)
 
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
@@ -181,9 +181,9 @@ class Batch(object):
             (hps.batch_size, max_enc_seq_len), dtype=np.int32)
         self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
         self.enc_padding_mask = np.zeros(
-            (hps.batch_size, max_enc_seq_len), dtype=np.float32)
-        self.enc_padding_mask_pos = np.zeros(
-            (hps.batch_size, max_enc_seq_len), dtype=np.float32)
+            (hps.batch_size, max_enc_seq_len), dtype=np.float32)  # word & pos features share this mask
+        # self.enc_padding_mask_pos = np.zeros(
+        #     (hps.batch_size, max_enc_seq_len), dtype=np.float32)
 
         # Fill in the numpy arrays with word sequences and pos tags sequence
         for i, ex in enumerate(example_list):
@@ -192,7 +192,7 @@ class Batch(object):
             self.enc_lens[i] = ex.enc_len
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
-                self.enc_padding_mask_pos[i][j] = 1
+                # self.enc_padding_mask_pos[i][j] = 1
 
         # For pointer-generator mode, need to store some extra info
         if hps.pointer_gen:
