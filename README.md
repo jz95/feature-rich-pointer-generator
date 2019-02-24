@@ -14,7 +14,7 @@ pip install pyrouge
 ```
 2. set rouge path
 ```
-pyrouge_set_rouge_path /absolute/path/to/mlp_proj/ROUGE-1.5.5
+pyrouge_set_rouge_path /absolute/path/to/mlp_proj/pyrouge/tools/ROUGE-1.5.5
 ```
 3. run evaluation in dir scripts
 
