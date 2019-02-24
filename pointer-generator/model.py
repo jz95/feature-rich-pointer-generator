@@ -87,6 +87,7 @@ class SummarizationModel(object):
             feed_dict[self._dec_batch] = batch.dec_batch
             feed_dict[self._target_batch] = batch.target_batch
             feed_dict[self._dec_padding_mask] = batch.dec_padding_mask
+
         return feed_dict
 
     def _add_encoder(self, encoder_inputs, seq_len, mode='word'):
@@ -145,42 +146,6 @@ class SummarizationModel(object):
             old_c = tf.concat(axis=1, values=[tp.c for tp in tmp])
             # Concatenation of fw and bw state
             old_h = tf.concat(axis=1, values=[tp.h for tp in tmp])
-            # Get new cell from old cell
-            new_c = tf.nn.relu(tf.matmul(old_c, w_reduce_c) + bias_reduce_c)  # [batch_size * hidden_dim]
-            # Get new state from old state
-            new_h = tf.nn.relu(tf.matmul(old_h, w_reduce_h) + bias_reduce_h)
-            # Return new cell and state
-            return tf.contrib.rnn.LSTMStateTuple(new_c, new_h)
-
-    def _reduce_states_pos(self, fw_st, bw_st, fw_st_pos, bw_st_pos):
-        """Add to the graph a linear layer to reduce the encoder's final FW and BW state into a single initial state for the decoder.
-        This is needed because the encoder is bidirectional but the decoder is not.
-
-        Args:
-          fw_st: LSTMStateTuple with hidden_dim units.
-          bw_st: LSTMStateTuple with hidden_dim units.
-
-        Returns:
-          state: LSTMStateTuple with hidden_dim units.
-        """
-        hidden_dim = self._hps.hidden_dim
-        with tf.variable_scope('reduce_final_st'):
-
-            # Define weights and biases to reduce the cell and reduce the state
-            w_reduce_c = tf.get_variable('w_reduce_c', [
-                                         hidden_dim * 4, hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-            w_reduce_h = tf.get_variable('w_reduce_h', [
-                                         hidden_dim * 4, hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-            bias_reduce_c = tf.get_variable(
-                'bias_reduce_c', [hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-            bias_reduce_h = tf.get_variable(
-                'bias_reduce_h', [hidden_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-
-            # Apply linear layer
-            # Concatenation of fw and bw cell
-            old_c = tf.concat(axis=1, values=[fw_st.c, bw_st.c, fw_st_pos.c, bw_st_pos.c])
-            # Concatenation of fw and bw state
-            old_h = tf.concat(axis=1, values=[fw_st.h, bw_st.h, fw_st_pos.h, bw_st_pos.h])
             # Get new cell from old cell
             new_c = tf.nn.relu(tf.matmul(old_c, w_reduce_c) + bias_reduce_c)  # [batch_size * hidden_dim]
             # Get new state from old state
@@ -285,6 +250,8 @@ class SummarizationModel(object):
         """Add the whole sequence-to-sequence model to the graph."""
         hps = self._hps
         vsize = self._vocab.size()  # size of the vocabulary
+        pos_size = self._vocab.size_pos()
+
 
         with tf.variable_scope('seq2seq'):
             # Some initializers
@@ -297,23 +264,21 @@ class SummarizationModel(object):
             with tf.variable_scope('embedding'):
                 embedding = tf.get_variable('embedding', [vsize, hps.emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
 
-                if hps.mode == "train":
-                    self._add_emb_vis(embedding)  # add to tensorboard
+                # if hps.mode == "train" : self._add_emb_vis(embedding)  # add to tensorboard
 
                 # tensor with shape (batch_size, max_enc_steps, emb_size)
                 emb_enc_inputs = tf.nn.embedding_lookup(embedding, self._enc_batch)
                 emb_dec_inputs = [tf.nn.embedding_lookup(embedding, x) for x in tf.unstack(self._dec_batch, axis=1)]  # list length max_dec_steps containing shape (batch_size, emb_size)
 
                 if hps.how_to_use_pos != 'no':
-                    embedding_pos = tf.get_variable('embedding_pos', [vsize, hps.pos_emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-                    if hps.mode == "train":
-                        self._add_emb_vis(embedding_pos)  # add to tensorboard
+                    embedding_pos = tf.get_variable('embedding_pos', [pos_size, hps.pos_emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+                    # if hps.mode == "train":
+                    #     self._add_emb_vis(embedding_pos)  # add to tensorboard
                     # self._enc_states = enc_outputs
                     emb_enc_inputs_pos = tf.nn.embedding_lookup(embedding_pos, self._enc_batch_pos)
 
                     if hps.how_to_use_pos == 'concate':
                         emb_enc_inputs = tf.concat([emb_enc_inputs, emb_enc_inputs_pos], axis=2)
-                        print(emb_enc_inputs.shape)
                     
             # Add the encoder for word level features
             fw_st_lst , bw_st_lst = [], []
@@ -336,8 +301,7 @@ class SummarizationModel(object):
 
             # Add the decoder.
             with tf.variable_scope('decoder'):
-                decoder_outputs, self._dec_out_state, self.attn_dists, self.p_gens, self.coverage = self._add_decoder(
-                    emb_dec_inputs)
+                decoder_outputs, self._dec_out_state, self.attn_dists, self.p_gens, self.coverage = self._add_decoder(emb_dec_inputs)
 
             # Add the output projection to obtain the vocabulary distribution
             with tf.variable_scope('output_projection'):

@@ -107,11 +107,11 @@ class Vocab(object):
                         'Duplicated word in vocabulary file: %s' % w)
                 self._pos_to_id[w] = count
                 self._id_to_pos[count] = w
-                self._count = count + 1
+                self._count_pos = count + 1
             for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
-                self._pos_to_id[w] = self._count
-                self._id_to_pos[self._count] = w
-                self._count += 1
+                self._pos_to_id[w] = self._count_pos
+                self._id_to_pos[self._count_pos] = w
+                self._count_pos += 1
 
     def word2id(self, word):
         """Returns the id (integer) of a word (string). Returns [UNK] id if word is OOV."""
@@ -139,6 +139,9 @@ class Vocab(object):
     def size(self):
         """Returns the total size of the vocabulary"""
         return self._count
+
+    def size_pos(self):
+        return self._count_pos
 
     def write_metadata(self, fpath):
         """Writes metadata file for Tensorboard word embedding visualizer as described here:

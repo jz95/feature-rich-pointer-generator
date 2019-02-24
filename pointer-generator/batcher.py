@@ -53,8 +53,10 @@ class Example(object):
         self.enc_len = len(article_words)
         # list of word ids; OOVs are represented by the id for UNK token
         self.enc_input = [vocab.word2id(w) for w in article_words]
+
         # list of pos ids
-        self.enc_input_pos = vocab.word2pos_id(article_words)
+        if hps.how_to_use_pos != 'no':
+            self.enc_input_pos = vocab.word2pos_id(article_words)
 
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
@@ -188,8 +190,11 @@ class Batch(object):
         # Fill in the numpy arrays with word sequences and pos tags sequence
         for i, ex in enumerate(example_list):
             self.enc_batch[i, :] = ex.enc_input[:]
-            self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
             self.enc_lens[i] = ex.enc_len
+
+            if hps.how_to_use_pos != 'no':
+                self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
+            
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
                 # self.enc_padding_mask_pos[i][j] = 1

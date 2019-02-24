@@ -1,8 +1,4 @@
-from nltk.corpus import brown
-from nltk.corpus import treebank
-from pickle import dump
-from pickle import load
-import nltk
+from pickle import dump, load
 
 def get_POS_tagged_sent(sentence):
     """
@@ -11,9 +7,8 @@ def get_POS_tagged_sent(sentence):
     """
 
     #load the tagger 
-    input = open('t4.pkl', 'rb')
-    tagger = load(input)
-    input.close()
+    with open('/Users/j.zhou/mlp_project/pointer-generator/pos_tagger/t4.pkl', 'rb') as f:
+        tagger = load(f)
     tagged_test_sentence = tagger.tag_sents([sentence])
     return tagged_test_sentence
 
