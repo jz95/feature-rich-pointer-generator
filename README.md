@@ -12,3 +12,29 @@ To train the model with pos embeddings, move the file `vocab_pos.txt` under the 
 
 
 ### see scripts and comments for detailed explaination
+
+----------------------------
+
+# How to use TensorBoard remotely on cluster
+## step 1.
+On you pc run:
+```
+ssh -L localhost:6006:localhost:6006 s1817462@student.inf.ed.ac.uk
+```
+which maps port 6006 on your pc to port 6006 on DICE.
+## step 2.
+after login on DICE, type
+```
+ssh -L localhost:6006:localhost:6006 mlp
+```
+which maps 6006 on DICE to 6006 on cluster head node.
+## step 3.
+After logining to the cluster
+```
+tensorboard --logdir=/path/to/your/dir --port=6006
+```
+## step 4.
+Go to [localhost:6006](http://localhost:6006) in the web browser on your pc.
+
+## TIPS
+We use default port 6006 for tensorboard, you are allowed to use other port number if you like, but we don't recommend so.
