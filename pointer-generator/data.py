@@ -20,7 +20,10 @@ import glob
 import random
 import struct
 import csv
+import os
 from tensorflow.core.example import example_pb2
+from pos_tagger.pos_tagging import get_POS_tagged_sent
+
 
 # <s> and </s> are used in the data files to segment the abstracts into sentences. They don't receive vocab ids.
 SENTENCE_START = '<s>'
@@ -39,16 +42,18 @@ STOP_DECODING = '[STOP]'
 
 
 class Vocab(object):
-    """Vocabulary class for mapping between words and ids (integers)"""
+    """Vocabulary class for mapping between words and ids (word, pos, and character; integers)"""
 
-    def __init__(self, vocab_file, max_size):
+    def __init__(self, vocab_path, max_size):
         """Creates a vocab of up to max_size words, reading from the vocab_file. If max_size is 0, reads the entire vocab file.
 
         Args:
-          vocab_file: path to the vocab file, which is assumed to contain "<word> <frequency>" on each line, sorted with most frequent word first. This code doesn't actually use the frequencies, though.
+          vocab_path: path to the vocab file, which is assumed to contain "<word> <frequency>" on each line, sorted with most frequent word first. This code doesn't actually use the frequencies, though.
           max_size: integer. The maximum size of the resulting Vocabulary."""
         self._word_to_id = {}
         self._id_to_word = {}
+        self._pos_to_id = {}
+        self._id_to_pos = {}
         self._count = 0  # keeps track of total number of words in the Vocab
 
         # [UNK], [PAD], [START] and [STOP] get the ids 0,1,2,3.
@@ -57,8 +62,9 @@ class Vocab(object):
             self._id_to_word[self._count] = w
             self._count += 1
 
-        # Read the vocab file and add words up to max_size
-        with open(vocab_file, 'r') as vocab_f:
+        # Read the word_vocab file and add words up to max_size
+        filename = os.path.join(vocab_path, 'vocab')
+        with open(filename, 'r') as vocab_f:
             for line in vocab_f:
                 pieces = line.split()
                 if len(pieces) != 2:
@@ -83,6 +89,30 @@ class Vocab(object):
         print("Finished constructing vocabulary of %i total words. Last word added: %s" % (
             self._count, self._id_to_word[self._count - 1]))
 
+        # Read the vocab_pos file and put pos_ids in self._word_to_pos & self._pos_to_word
+        filename = os.path.join(vocab_path, 'vocab_pos.txt')
+        with open(filename, 'r') as vocab_pos:
+            for line in vocab_pos:
+                pieces_pos = line.split('\t')
+                if len(pieces_pos) != 2:
+                    print(
+                        'Warning: incorrectly formatted line in vocab_pos file: %s\n' % line)
+                    continue
+                w, count = pieces_pos[0], int(pieces_pos[1])
+                if w in [SENTENCE_START, SENTENCE_END, UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
+                    raise Exception(
+                        '<s>, </s>, [UNK], [PAD], [START] and [STOP] shouldn\'t be in the vocab file, but %s is' % w)
+                if w in self._pos_to_id:
+                    raise Exception(
+                        'Duplicated word in vocabulary file: %s' % w)
+                self._pos_to_id[w] = count
+                self._id_to_pos[count] = w
+                self._count_pos = count + 1
+            for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
+                self._pos_to_id[w] = self._count_pos
+                self._id_to_pos[self._count_pos] = w
+                self._count_pos += 1
+
     def word2id(self, word):
         """Returns the id (integer) of a word (string). Returns [UNK] id if word is OOV."""
         if word not in self._word_to_id:
@@ -95,9 +125,23 @@ class Vocab(object):
             raise ValueError('Id not found in vocab: %d' % word_id)
         return self._id_to_word[word_id]
 
+    def word2pos_id(self, sentence):
+        """Returns the pos tag of a word (string)."""
+        pos = get_POS_tagged_sent(sentence)
+        return [self._pos_to_id[w[1]] if w[1] in self._pos_to_id else self._pos_to_id[UNKNOWN_TOKEN] for w in pos]
+
+    def pos_id2word(self, pos_id):
+        """Returns the pos (string) corresponding to an pos_id (integer)."""
+        if pos_id not in self._id_to_pos:
+            raise ValueError('Id not found in vocab_pos: %d' % pos_id)
+        return self._id_to_pos[pos_id]
+
     def size(self):
         """Returns the total size of the vocabulary"""
         return self._count
+
+    def size_pos(self):
+        return self._count_pos
 
     def write_metadata(self, fpath):
         """Writes metadata file for Tensorboard word embedding visualizer as described here:

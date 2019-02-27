@@ -17,7 +17,7 @@ export EXP_NAME=myexperiment
 python $BASELINE_CODE_DIR/run_summarization.py\
 	--mode=decode\
 	--data_path=$DATA_DIR/chunked/val_*\
-	--vocab_path=$DATA_DIR/vocab\
+	--vocab_path=$DATA_DIR\
 	--log_root=$LOG_DIR\
 	--exp_name=$EXP_NAME\
 	--single_pass=True

@@ -16,7 +16,8 @@ export EXP_NAME=myexperiment
 python $BASELINE_CODE_DIR/run_summarization.py\
 	--mode=train\
 	--data_path=$DATA_DIR/chunked/train_*\
-	--vocab_path=$DATA_DIR/vocab\
+	--vocab_path=$DATA_DIR\
 	--log_root=$LOG_DIR\
-	--exp_name=$EXP_NAME
+	--exp_name=$EXP_NAME\
+	--how_to_use_pos=encoder
 
