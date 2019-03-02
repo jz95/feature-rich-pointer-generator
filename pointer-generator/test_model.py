@@ -1,7 +1,20 @@
-########################
-##### only used for infering 
-##### prog's behavior
-########################
+# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+# Modifications Copyright 2017 Abigail See
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+"""This is the top-level file to train, evaluate or test your summarization model"""
 
 import sys
 import time
@@ -14,6 +27,7 @@ from batcher import Batcher
 from model import SummarizationModel
 from decode import BeamSearchDecoder
 import util
+from tensorflow.python import debug as tf_debug
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -41,10 +55,16 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_integer(
     'hidden_dim', 256, 'dimension of RNN hidden states')
 tf.app.flags.DEFINE_integer('emb_dim', 128, 'dimension of word embeddings')
-tf.app.flags.DEFINE_integer('pos_emb_dim', 30, 'dimension of pos embeddings')  # UPDATE pos_emb_dim
-tf.app.flags.DEFINE_string('how_to_use_pos', 'no', 
+tf.app.flags.DEFINE_integer('pos_emb_dim', 32, 'dimension of pos embeddings')  # UPDATE pos_emb_dim
+tf.app.flags.DEFINE_integer('char_emb_dim', 32, 'dimension of char embeddings')  # UPDATE pos_emb_dim
+
+tf.app.flags.DEFINE_string('how_to_use_pos', 'no',
     'must be one of no/concate/encoder, no - dont include pos, i.e. baseline mode\
                                         concate - just concate pos embedding with word embedding')
+
+tf.app.flags.DEFINE_string('how_to_use_char', 'no',
+    'must be one of no/concate/encoder, no - dont include char, i.e. baseline mode\
+                                        concate - just concate char embedding with word embedding')
 
 tf.app.flags.DEFINE_integer('batch_size', 16, 'minibatch size')
 tf.app.flags.DEFINE_integer(
@@ -197,6 +217,8 @@ def setup_training(model, batcher):
         restore_best_model()
     saver = tf.train.Saver(max_to_keep=3)  # keep 3 checkpoints at a time
 
+    # supervisor would load the latest ckpt automatically
+    # which allows continuing training
     sv = tf.train.Supervisor(logdir=train_dir,
                              is_chief=True,
                              saver=saver,
@@ -279,6 +301,7 @@ def run_eval(model, batcher, vocab):
     best_loss = None  # will hold the best loss achieved so far
 
     while True:
+        # during eval mode, model should load the latest ckpt manually
         _ = util.load_ckpt(saver, sess)  # load a new checkpoint
         batch = batcher.next_batch()  # get the next batch
 
@@ -319,25 +342,34 @@ def run_eval(model, batcher, vocab):
 
 
 def main(unused_argv):
-    FLAGS.how_to_use_pos = 'concate'
     vocab = Vocab('/Users/j.zhou/mlp_project/data/finished_files', 500)  # create a vocabulary
 
+    # If in decode mode, set batch_size = beam_size
+    # Reason: in decode mode, we decode one example at a time.
+    # On each step, we have beam_size-many hypotheses in the beam, so we need to make a batch of these hypotheses.
+
     # Make a namedtuple hps, containing the values of the hyperparameters that the model needs
+    FLAGS.how_to_use_pos = 'concate'
+    FLAGS.how_to_use_char = 'concate'
+
     hparam_list = ['mode', 'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm',
-                   'hidden_dim', 'emb_dim', 'pos_emb_dim', 'how_to_use_pos', 'batch_size', 'max_dec_steps', 'max_enc_steps', 'coverage', 'cov_loss_wt', 'pointer_gen']
+                   'hidden_dim', 'emb_dim', 'pos_emb_dim', 'char_emb_dim',
+                   'how_to_use_pos', 'how_to_use_char',
+                   'batch_size', 'max_dec_steps', 'max_enc_steps', 'coverage', 'cov_loss_wt', 'pointer_gen']
+
     hps_dict = {}
     for key, val in FLAGS.__flags.items():  # for each flag
         if key in hparam_list:  # if it's in the list
             hps_dict[key] = val.value  # add it to the dict
     hps = namedtuple("HParams", hps_dict.keys())(**hps_dict)
 
-    tf.set_random_seed(111)  # a seed value for randomness
 
-    print("creating model...")
-    # model = SummarizationModel(hps, vocab)
-    # model.build_graph()
+    # Create a batcher object that will create minibatches of data
+    batcher = Batcher('/Users/j.zhou/mlp_project/data/finished_files/val.bin', vocab, hps, single_pass=FLAGS.single_pass)
+
+    model = SummarizationModel(hps, vocab)
+    model.build_graph()
     # setup_training(model, batcher)
-
 
 if __name__ == '__main__':
     tf.app.run()

@@ -167,6 +167,11 @@ class Vocab(object):
         pos = get_POS_tagged_sent(sentence)
         return [self._pos_to_id[w[1]] if w[1] in self._pos_to_id else self._pos_to_id[UNKNOWN_TOKEN] for w in pos]
 
+    def single_pos2id(self, pos):
+        if pos not in self._pos_to_id:
+            return self._pos_to_id[UNKNOWN_TOKEN]
+        return self._pos_to_id[pos]
+
     def pos_id2word(self, pos_id):
         """Returns the pos (string) corresponding to an pos_id (integer)."""
         if pos_id not in self._id_to_pos:

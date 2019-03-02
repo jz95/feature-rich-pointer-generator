@@ -7,7 +7,7 @@ def get_POS_tagged_sent(sentence):
     """
 
     #load the tagger 
-    with open('~/mlp_project/pointer-generator/pos_tagger/t4.pkl', 'rb') as f:
+    with open('/Users/j.zhou/mlp_project/pointer-generator/pos_tagger/t4.pkl', 'rb') as f:
         tagger = load(f)
     tagged_test_sentence = tagger.tag_sents([sentence])
     return tagged_test_sentence
