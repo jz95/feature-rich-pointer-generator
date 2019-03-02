@@ -29,7 +29,7 @@ pyrouge_set_rouge_path /absolute/path/to/mlp_proj/pyrouge/tools/ROUGE-1.5.5
 ## step 1.
 On you pc run:
 ```
-ssh -L localhost:6006:localhost:6006 s1817462@student.inf.ed.ac.uk
+ssh -L localhost:6006:localhost:6006 s1234567@student.ssh.inf.ed.ac.uk
 ```
 which maps port 6006 on your pc to port 6006 on DICE.
 ## step 2.
