@@ -76,9 +76,10 @@ class SummarizationModel(object):
         feed_dict[self._enc_batch] = batch.enc_batch
         feed_dict[self._enc_lens] = batch.enc_lens
         feed_dict[self._enc_padding_mask] = batch.enc_padding_mask
-        
+
         if FLAGS.how_to_use_pos != 'no':
             feed_dict[self._enc_batch_pos] = batch.enc_batch_pos
+            print(batch.enc_batch_pos)
 
         if FLAGS.pointer_gen:
             feed_dict[self._enc_batch_extend_vocab] = batch.enc_batch_extend_vocab

@@ -57,7 +57,6 @@ class Example(object):
         # list of pos ids
         if hps.how_to_use_pos != 'no':
             self.enc_input_pos = vocab.word2pos_id(article_words)
-
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
         abstract_words = abstract.split()  # list of strings
@@ -128,6 +127,10 @@ class Example(object):
             while len(self.enc_input_extend_vocab) < max_len:
                 self.enc_input_extend_vocab.append(pad_id)
 
+    def pad_encoder_input_pos(self, max_len, pad_id):
+        while len(self.enc_input_pos) < max_len:
+            self.enc_input_pos.append(pad_id)
+
 
 class Batch(object):
     """Class representing a minibatch of train/val/test examples for text summarization."""
@@ -140,8 +143,9 @@ class Batch(object):
            hps: hyperparameters
            vocab: Vocabulary object
         """
-        self.pad_id = vocab.word2id(
-            data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
+        self.pad_id = vocab.word2id(data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
+        self.pad_id_pos = vocab.single_pos2id(data.PAD_TOKEN)
+
         # initialize the input to the encoder
         self.init_encoder_seq(example_list, hps)
         # initialize the input and targets for the decoder
@@ -173,6 +177,7 @@ class Batch(object):
         # Pad the encoder input sequences up to the length of the longest sequence
         for ex in example_list:
             ex.pad_encoder_input(max_enc_seq_len, self.pad_id)
+            ex.pad_encoder_input_pos(max_enc_seq_len, self.pad_id_pos)
 
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
@@ -193,8 +198,9 @@ class Batch(object):
             self.enc_lens[i] = ex.enc_len
 
             if hps.how_to_use_pos != 'no':
+                assert len(self.enc_batch_pos[i, :]) == len(ex.enc_input_pos)
                 self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
-            
+
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
                 # self.enc_padding_mask_pos[i][j] = 1

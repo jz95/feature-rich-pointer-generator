@@ -164,8 +164,14 @@ class Vocab(object):
 
     def word2pos_id(self, sentence):
         """Returns the pos tag of a word (string)."""
-        pos = get_POS_tagged_sent(sentence)
+        pos = get_POS_tagged_sent(sentence)[0]
         return [self._pos_to_id[w[1]] if w[1] in self._pos_to_id else self._pos_to_id[UNKNOWN_TOKEN] for w in pos]
+
+    def single_pos2id(self, pos):
+        """Returns the id (integer) of a word (string). Returns [UNK] id if word is OOV."""
+        if pos not in self._pos_to_id:
+            return self._pos_to_id[UNKNOWN_TOKEN]
+        return self._pos_to_id[pos]
 
     def pos_id2word(self, pos_id):
         """Returns the pos (string) corresponding to an pos_id (integer)."""
