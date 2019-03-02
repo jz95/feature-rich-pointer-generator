@@ -58,6 +58,9 @@ class Example(object):
         if hps.how_to_use_pos != 'no':
             self.enc_input_pos = vocab.word2pos_id(article_words)
 
+        if hps.how_to_use_char != 'no':
+            self.enc_input_char = vocab.char2id(' '.join(article_words))
+
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
         abstract_words = abstract.split()  # list of strings
@@ -128,6 +131,10 @@ class Example(object):
             while len(self.enc_input_extend_vocab) < max_len:
                 self.enc_input_extend_vocab.append(pad_id)
 
+    def pad_encoder_input_char(self, max_len, pad_id):
+        while len(self.enc_input_char) < max_len:
+            self.enc_input_char.append(pad_id)
+
 
 class Batch(object):
     """Class representing a minibatch of train/val/test examples for text summarization."""
@@ -140,8 +147,7 @@ class Batch(object):
            hps: hyperparameters
            vocab: Vocabulary object
         """
-        self.pad_id = vocab.word2id(
-            data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
+        self.pad_id_char = vocab.word2id(data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
         # initialize the input to the encoder
         self.init_encoder_seq(example_list, hps)
         # initialize the input and targets for the decoder
@@ -181,6 +187,9 @@ class Batch(object):
             (hps.batch_size, max_enc_seq_len), dtype=np.int32)
         self.enc_batch_pos = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.int32)
+        self.enc_batch_pos = np.zeros(
+            (hps.batch_size, max_enc_seq_len_char), dtype=np.int32)
+
         self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
         self.enc_padding_mask = np.zeros(
             (hps.batch_size, max_enc_seq_len), dtype=np.float32)  # word & pos features share this mask

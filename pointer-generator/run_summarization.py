@@ -55,10 +55,16 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_integer(
     'hidden_dim', 256, 'dimension of RNN hidden states')
 tf.app.flags.DEFINE_integer('emb_dim', 128, 'dimension of word embeddings')
-tf.app.flags.DEFINE_integer('pos_emb_dim', 30, 'dimension of pos embeddings')  # UPDATE pos_emb_dim
-tf.app.flags.DEFINE_string('how_to_use_pos', 'no', 
+tf.app.flags.DEFINE_integer('pos_emb_dim', 32, 'dimension of pos embeddings')  # UPDATE pos_emb_dim
+tf.app.flags.DEFINE_integer('char_emb_dim', 32, 'dimension of char embeddings')  # UPDATE pos_emb_dim
+
+tf.app.flags.DEFINE_string('how_to_use_pos', 'no',
     'must be one of no/concate/encoder, no - dont include pos, i.e. baseline mode\
                                         concate - just concate pos embedding with word embedding')
+
+tf.app.flags.DEFINE_string('how_to_use_char', 'no',
+    'must be one of no/concate/encoder, no - dont include char, i.e. baseline mode\
+                                        concate - just concate char embedding with word embedding')
 
 tf.app.flags.DEFINE_integer('batch_size', 16, 'minibatch size')
 tf.app.flags.DEFINE_integer(
