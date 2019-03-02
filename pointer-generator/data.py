@@ -50,10 +50,18 @@ class Vocab(object):
         Args:
           vocab_path: path to the vocab file, which is assumed to contain "<word> <frequency>" on each line, sorted with most frequent word first. This code doesn't actually use the frequencies, though.
           max_size: integer. The maximum size of the resulting Vocabulary."""
+
+        self.vocab_path = vocab_path
+        self.max_size = max_size
+
+        self._init_word_vocab()
+        self._init_pos_vocab()
+        self._init_char_vocab()
+
+    def _init_word_vocab(self):
         self._word_to_id = {}
         self._id_to_word = {}
-        self._pos_to_id = {}
-        self._id_to_pos = {}
+
         self._count = 0  # keeps track of total number of words in the Vocab
 
         # [UNK], [PAD], [START] and [STOP] get the ids 0,1,2,3.
@@ -63,7 +71,7 @@ class Vocab(object):
             self._count += 1
 
         # Read the word_vocab file and add words up to max_size
-        filename = os.path.join(vocab_path, 'vocab')
+        filename = os.path.join(self.vocab_path, 'vocab')
         with open(filename, 'r') as vocab_f:
             for line in vocab_f:
                 pieces = line.split()
@@ -81,16 +89,26 @@ class Vocab(object):
                 self._word_to_id[w] = self._count
                 self._id_to_word[self._count] = w
                 self._count += 1
-                if max_size != 0 and self._count >= max_size:
+                if self.max_size != 0 and self._count >= self.max_size:
                     print("max_size of vocab was specified as %i; we now have %i words. Stopping reading." % (
-                        max_size, self._count))
+                        self.max_size, self._count))
                     break
 
         print("Finished constructing vocabulary of %i total words. Last word added: %s" % (
             self._count, self._id_to_word[self._count - 1]))
 
+    def _init_pos_vocab(self):
+        self._pos_to_id = {}
+        self._id_to_pos = {}
+        self._count_pos = 0
+
+        for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
+            self._pos_to_id[w] = self._count_pos
+            self._id_to_pos[self._count_pos] = w
+            self._count_pos += 1
+
         # Read the vocab_pos file and put pos_ids in self._word_to_pos & self._pos_to_word
-        filename = os.path.join(vocab_path, 'vocab_pos.txt')
+        filename = os.path.join(self.vocab_path, 'vocab_pos.txt')
         with open(filename, 'r') as vocab_pos:
             for line in vocab_pos:
                 pieces_pos = line.split('\t')
@@ -98,20 +116,39 @@ class Vocab(object):
                     print(
                         'Warning: incorrectly formatted line in vocab_pos file: %s\n' % line)
                     continue
-                w, count = pieces_pos[0], int(pieces_pos[1])
+                w = pieces_pos[0]
                 if w in [SENTENCE_START, SENTENCE_END, UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
                     raise Exception(
                         '<s>, </s>, [UNK], [PAD], [START] and [STOP] shouldn\'t be in the vocab file, but %s is' % w)
                 if w in self._pos_to_id:
                     raise Exception(
                         'Duplicated word in vocabulary file: %s' % w)
-                self._pos_to_id[w] = count
-                self._id_to_pos[count] = w
-                self._count_pos = count + 1
-            for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING]:
                 self._pos_to_id[w] = self._count_pos
                 self._id_to_pos[self._count_pos] = w
                 self._count_pos += 1
+
+    def _init_char_vocab(self):
+        self._char_to_id = {}
+        self._id_to_char = {}
+
+        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'"/\\|_@#$%^&* ~`+-=<>()[]{}""")
+        self._count_char = 0
+
+        for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING] + self._char_vocab:
+            self._char_to_id[w] = self._count_char
+            self._id_to_char[self._count_char] = w
+            self._count_pos += 1
+
+    def char2id(self, char):
+        if char not in self._char_to_id:
+            print('this char is UNK %s' % char)
+            return self._char_to_id[UNKNOWN_TOKEN]
+        return self._char_to_id[char]
+
+    def id2char(self, char_id):
+        if char_id not in self._id_to_char:
+            raise ValueError('Id not found in char vocab: %d' % char2id)
+        return self._id_to_char[char_id]
 
     def word2id(self, word):
         """Returns the id (integer) of a word (string). Returns [UNK] id if word is OOV."""
@@ -142,6 +179,9 @@ class Vocab(object):
 
     def size_pos(self):
         return self._count_pos
+
+    def size_char(self):
+        return self._count_char
 
     def write_metadata(self, fpath):
         """Writes metadata file for Tensorboard word embedding visualizer as described here:

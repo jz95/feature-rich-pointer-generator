@@ -279,7 +279,14 @@ class SummarizationModel(object):
 
                     if hps.how_to_use_pos == 'concate':
                         emb_enc_inputs = tf.concat([emb_enc_inputs, emb_enc_inputs_pos], axis=2)
-                    
+
+                if hps.how_to_use_char != 'no':
+                    embedding_char = tf.get_variable('embedding_char', [char_size, hps.char_emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
+                    emb_enc_inputs_char = tf.nn.embedding_lookup(embedding_char, self._enc_batch_char)
+
+                    if hps.how_to_use_char == 'concate':
+                        emb_enc_inputs = tf.concat([emb_enc_inputs, emb_enc_inputs_char], axis=2)
+
             # Add the encoder for word level features
             fw_st_lst , bw_st_lst = [], []
             enc_outputs, fw_st, bw_st = self._add_encoder(emb_enc_inputs, self._enc_lens, mode='word')
@@ -291,7 +298,7 @@ class SummarizationModel(object):
                 enc_outputs_pos, fw_st_pos, bw_st_pos = self._add_encoder(emb_enc_inputs_pos, self._enc_lens, mode='pos')
                 fw_st_lst.append(fw_st_pos)
                 bw_st_lst.append(bw_st_pos)
-            
+
             self._enc_states = enc_outputs
             # self._enc_states = tf.concat([enc_outputs, enc_pos_outputs], axis=1)
 

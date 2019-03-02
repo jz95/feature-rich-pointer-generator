@@ -334,8 +334,8 @@ def main(unused_argv):
     tf.set_random_seed(111)  # a seed value for randomness
 
     print("creating model...")
-    model = SummarizationModel(hps, vocab)
-    model.build_graph()
+    # model = SummarizationModel(hps, vocab)
+    # model.build_graph()
     # setup_training(model, batcher)
 
 
