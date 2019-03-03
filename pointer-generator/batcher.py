@@ -67,7 +67,7 @@ class Example(object):
             # self.enc_word_char_len = [len(w) + 1 if i != self.enc_len - 1 else len(
             #     w) for w, i in enumerate(article_words)]  # length in characters of each word
             self.enc_input_char = [gen_chars(word) for word in article_words]
-            self.max_word_len = max(map(len, article_words))
+            self.max_word_len = max(map(len, article_words)) + 2  # plus word bound 
 
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
