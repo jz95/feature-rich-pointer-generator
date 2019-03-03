@@ -8,7 +8,7 @@ export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
 # see the logs dir for experiment records
 export LOG_DIR=$ROOT_DIR/logs
 # give a name to your experiment
-export EXP_NAME=test
+export EXP_NAME=pos_concate
 
 
 ############
@@ -22,9 +22,9 @@ if [ ! -d "$BACK_DIR" ]; then
 fi
 echo "=========================="
 
-#####################
+
 # convert_to_coverage
-#####################
+# all args shall be the SAME as the model you load
 python $BASELINE_CODE_DIR/run_summarization.py\
 	--mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
@@ -32,6 +32,7 @@ python $BASELINE_CODE_DIR/run_summarization.py\
 	--log_root=$LOG_DIR\
 	--exp_name=$EXP_NAME\
     --coverage=True\
+    --how_to_use_pos=concate\
 	--convert_to_coverage_model=True
 
 # check if we get the new ckpt
@@ -51,7 +52,7 @@ python $BASELINE_CODE_DIR/run_summarization.py\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --coverage=True\
-    --how_to_use_char=concate & 
+    --how_to_use_pos=concate & 
 
 sleep 10
 
@@ -65,4 +66,4 @@ python $BASELINE_CODE_DIR/run_summarization.py\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --coverage=True\
-    --how_to_use_char=concate & 
+    --how_to_use_pos=concate & 

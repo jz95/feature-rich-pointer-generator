@@ -60,14 +60,20 @@ class Example(object):
             self.enc_input_pos = vocab.word2pos_id(article_words)
 
         if hps.how_to_use_char != 'no':
+
             def gen_chars(word):
-                return [vocab.char2id(data.WORD_PREFIX)] + [vocab.char2id(char) for char in word] + [vocab.char2id(data.WORD_SUFFIX)]
-            # article_chars = ' '.join(article_words)
-            # self.enc_len_char = len(article_chars)
-            # self.enc_word_char_len = [len(w) + 1 if i != self.enc_len - 1 else len(
-            #     w) for w, i in enumerate(article_words)]  # length in characters of each word
+                ret = [vocab.char2id(data.WORD_PREFIX)]
+                ret.extend([vocab.char2id(char) for char in word])
+                if len(ret) >= hps.max_word_len:
+                    return ret[:hps.max_word_len]
+                else:
+                    ret.append(vocab.char2id(data.WORD_SUFFIX))
+
+                while len(ret) < hps.max_word_len:
+                    ret.append(vocab.char2id(data.PAD_TOKEN))
+                return ret
+
             self.enc_input_char = [gen_chars(word) for word in article_words]
-            self.max_word_len = max(map(len, article_words)) + 2  # plus word bound 
 
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
@@ -144,16 +150,9 @@ class Example(object):
         while len(self.enc_input_pos) < max_len:
             self.enc_input_pos.append(pad_id)
 
-    def pad_encoder_input_char(self, max_word_len, max_seq_len, pad_id):
-        """ max_word_len: the length of the longest word in batch
-        max_seq_len: the length of the longest sentence in batch
-        """
-        for char_seq in self.enc_input_char:
-            while len(char_seq) < max_word_len:
-                char_seq.append(pad_id)
-
-        while len(self.enc_input_char) < max_seq_len:
-            self.enc_input_char.append([pad_id] * max_word_len)
+    def pad_encoder_input_char(self, max_len, pad_id):
+        while len(self.enc_input_char) < max_len:
+            self.enc_input_char.append([pad_id] * self.hps.max_word_len)
 
 
 class Batch(object):
@@ -196,10 +195,7 @@ class Batch(object):
               Same as self.enc_batch, but in-article OOVs are represented by their temporary article OOV number.
         """
         # Determine the maximum length of the word input sequence in this batch
-        max_seq_len = hps.max_enc_steps
-
-        if hps.how_to_use_char != 'no':
-            max_word_len = max([ex.max_word_len for ex in example_list])
+        max_seq_len = max([ex.enc_len for ex in example_list])
 
         # Pad the encoder input sequences up to the length of the longest sequence
         for ex in example_list:
@@ -208,8 +204,7 @@ class Batch(object):
             if hps.how_to_use_pos != 'no':
                 ex.pad_encoder_input_pos(max_seq_len, self.pad_id_pos)
             if hps.how_to_use_char != 'no':
-                ex.pad_encoder_input_char(
-                    max_word_len, max_seq_len, self.pad_id_char)
+                ex.pad_encoder_input_char(max_seq_len, self.pad_id_char)
 
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
@@ -222,17 +217,14 @@ class Batch(object):
         self.enc_padding_mask = np.zeros(
             (hps.batch_size, max_seq_len), dtype=np.float32)  # word & pos features share this mask
 
+
         if hps.how_to_use_pos != 'no':
             self.enc_batch_pos = np.zeros(
                 (hps.batch_size, max_seq_len), dtype=np.int32)
 
         if hps.how_to_use_char != 'no':
             self.enc_batch_char = np.zeros(
-                (hps.batch_size, max_seq_len, max_word_len), dtype=np.int32)
-
-            # self.enc_lens_char = np.zeros((hps.batch_size), dtype=np.int32)
-            # self.enc_word_char_len = np.zeros(
-            #     (hps.batch_size, max_word_seq_len), dtype=np.int32)
+                (hps.batch_size, max_seq_len, hps.max_word_len), dtype=np.int32)
 
         # Fill in the numpy arrays with word sequences and pos tags sequence
         for i, ex in enumerate(example_list):
@@ -265,6 +257,7 @@ class Batch(object):
                 (hps.batch_size, max_seq_len), dtype=np.int32)
             for i, ex in enumerate(example_list):
                 self.enc_batch_extend_vocab[i, :] = ex.enc_input_extend_vocab[:]
+
 
     def init_decoder_seq(self, example_list, hps):
         """Initializes the following:

@@ -8,29 +8,41 @@ export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
 # see the logs dir for experiment records
 export LOG_DIR=$ROOT_DIR/logs
 # give a name to your experiment
-export EXP_NAME=pos_concate
+export EXP_NAME=test
 
 #######
 # TRAIN
 #######
+rm -rf $LOG_DIR/$EXP_NAME
 python $BASELINE_CODE_DIR/run_summarization.py\
     --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
     --vocab_path=$DATA_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
-    --how_to_use_pos=concate & 
+    --how_to_use_char=encoder &
+CHILD_PID=$!
+sleep 600
 
-sleep 600   # no hurry to run eval 
-
-##################
-## EVAL CONCURRENT
-##################
+kill $CHILD_PID
+#####################
+# convert_to_coverage
+#####################
 python $BASELINE_CODE_DIR/run_summarization.py\
-    --mode=eval\
-    --data_path=$DATA_DIR/chunked/val_*\
+    --mode=train\
+    --data_path=$DATA_DIR/chunked/train_*\
     --vocab_path=$DATA_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
-    --how_to_use_pos=concate & 
+    --how_to_use_char=encoder\
+    --coverage=True\
+    --convert_to_coverage_model=True
 
+python $BASELINE_CODE_DIR/run_summarization.py\
+    --mode=train\
+    --data_path=$DATA_DIR/chunked/train_*\
+    --vocab_path=$DATA_DIR\
+    --log_root=$LOG_DIR\
+    --exp_name=$EXP_NAME\
+    --how_to_use_char=encoder\
+    --coverage=True

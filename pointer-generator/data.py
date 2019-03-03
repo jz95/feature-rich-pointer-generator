@@ -134,10 +134,11 @@ class Vocab(object):
         self._char_to_id = {}
         self._id_to_char = {}
 
+        fr_syms = list("""éèàùâêîôûëïç""")
         de_syms = list("""äöüß""")
         other_syms = list("""€£©™±""")
         puncts = list(""",;.!?:'"/\\|_@#$%^&* ~`+-=<>()[]{}•‑""")
-        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789""") + de_syms + other_syms + puncts
+        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789""") + fr_syms + de_syms + other_syms + puncts
         self._count_char = 0
 
         for w in [UNKNOWN_TOKEN, PAD_TOKEN, WORD_PREFIX, WORD_SUFFIX] + self._char_vocab:

@@ -68,6 +68,8 @@ tf.app.flags.DEFINE_string('how_to_use_char', 'no',
 
 tf.app.flags.DEFINE_integer('batch_size', 16, 'minibatch size')
 tf.app.flags.DEFINE_integer(
+    'max_word_len', 32, 'max word length limitation')
+tf.app.flags.DEFINE_integer(
     'max_enc_steps', 400, 'max timesteps of encoder (max source text tokens)')
 tf.app.flags.DEFINE_integer(
     'max_dec_steps', 100, 'max timesteps of decoder (max summary tokens)')
@@ -375,7 +377,8 @@ def main(unused_argv):
     hparam_list = ['mode', 'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm',
                    'hidden_dim', 'emb_dim', 'pos_emb_dim', 'char_emb_dim',
                    'how_to_use_pos', 'how_to_use_char',
-                   'batch_size', 'max_dec_steps', 'max_enc_steps', 'coverage', 'cov_loss_wt', 'pointer_gen']
+                   'batch_size', 'max_dec_steps', 'max_enc_steps', 'max_word_len',
+                   'coverage', 'cov_loss_wt', 'pointer_gen']
 
     hps_dict = {}
     for key, val in FLAGS.__flags.items():  # for each flag
