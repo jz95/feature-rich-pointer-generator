@@ -264,8 +264,7 @@ class Batch(object):
             self.enc_batch_extend_vocab = np.zeros(
                 (hps.batch_size, max_seq_len), dtype=np.int32)
             for i, ex in enumerate(example_list):
-                self.enc_batch_extend_vocab[i,
-                                            :] = ex.enc_input_extend_vocab[:]
+                self.enc_batch_extend_vocab[i, :] = ex.enc_input_extend_vocab[:]
 
     def init_decoder_seq(self, example_list, hps):
         """Initializes the following:

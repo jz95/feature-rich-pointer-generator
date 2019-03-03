@@ -39,28 +39,28 @@ class SummarizationModel(object):
 
         # encoder part
         self._enc_batch = tf.placeholder(
-            tf.int32, [hps.batch_size, None], name='enc_batch')
+            tf.int32, [hps.batch_size, hps.max_enc_steps], name='enc_batch')
         self._enc_lens = tf.placeholder(
             tf.int32, [hps.batch_size], name='enc_lens')
         self._enc_padding_mask = tf.placeholder(
-            tf.float32, [hps.batch_size, None], name='enc_padding_mask')
+            tf.float32, [hps.batch_size, hps.max_enc_steps], name='enc_padding_mask')
 
         if hps.how_to_use_pos != 'no':
             self._enc_batch_pos = tf.placeholder(
-                tf.int32, [hps.batch_size, None], name='enc_batch_pos')  # Add tf.placehoder for pos_tag batches
+                tf.int32, [hps.batch_size, hps.max_enc_steps], name='enc_batch_pos')  # Add tf.placehoder for pos_tag batches
 
         if hps.how_to_use_char != 'no':
             # self._enc_lens_char = tf.placeholder(
             #     tf.int32, [hps.batch_size], name='enc_lens_char')
             self._enc_batch_char = tf.placeholder(
-                tf.int32, [hps.batch_size, self._hps.max_enc_steps, None], name='enc_batch_char')  # Add tf.placehoder for pos_tag batches
+                tf.int32, [hps.batch_size, hps.max_enc_steps, None], name='enc_batch_char')  # Add tf.placehoder for pos_tag batches
 
             # self._enc_word_char_len = tf.placeholder(
             #     tf.int32, [hps.batch_size, None], name='enc_batch_char_len')  # Add tf.placehoder for pos_tag batches
 
         if FLAGS.pointer_gen:
             self._enc_batch_extend_vocab = tf.placeholder(
-                tf.int32, [hps.batch_size, None], name='enc_batch_extend_vocab')
+                tf.int32, [hps.batch_size, hps.max_enc_steps], name='enc_batch_extend_vocab')
             self._max_art_oovs = tf.placeholder(
                 tf.int32, [], name='max_art_oovs')
 
@@ -74,7 +74,7 @@ class SummarizationModel(object):
 
         if hps.mode == "decode" and hps.coverage:
             self.prev_coverage = tf.placeholder(
-                tf.float32, [hps.batch_size, None], name='prev_coverage')
+                tf.float32, [hps.batch_size, hps.max_enc_steps], name='prev_coverage')
 
     def _make_feed_dict(self, batch, just_enc=False):
         """Make a feed dictionary mapping parts of the batch to the appropriate placeholders.
@@ -322,6 +322,8 @@ class SummarizationModel(object):
                     if hps.how_to_use_pos == 'concate':
                         emb_enc_inputs = tf.concat(
                             [emb_enc_inputs, emb_enc_inputs_pos], axis=2)
+                        print('concate_pos')
+                        print(emb_enc_inputs.shape)
 
                 if hps.how_to_use_char != 'no':
                     embedding_char = tf.get_variable('embedding_char', [
@@ -332,6 +334,7 @@ class SummarizationModel(object):
                     if hps.how_to_use_char == 'concate':
                         emb_enc_inputs = tf.concat(
                             [emb_enc_inputs, emb_enc_inputs_char_conv], axis=2)
+                        print('char_pos')
                         print(emb_enc_inputs.shape)
 
             # Add the encoder for word level features
