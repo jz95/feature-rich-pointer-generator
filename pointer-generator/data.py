@@ -38,6 +38,9 @@ START_DECODING = '[START]'
 # This has a vocab id, which is used at the end of untruncated target sequences
 STOP_DECODING = '[STOP]'
 
+WORD_PREFIX = '<w>'
+WORD_SUFFIX = '</w>'
+
 # Note: none of <s>, </s>, [PAD], [UNK], [START], [STOP] should appear in the vocab file.
 
 
@@ -131,13 +134,13 @@ class Vocab(object):
         self._char_to_id = {}
         self._id_to_char = {}
 
-        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'"/\\|_@#$%^&* ~`+-=<>()[]{}""")
+        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789,;.!?:'"/\\|_@#$%^&* ~`+-=<>()[]{}•äö©é£àù‑""")
         self._count_char = 0
 
-        for w in [UNKNOWN_TOKEN, PAD_TOKEN, START_DECODING, STOP_DECODING] + self._char_vocab:
+        for w in [UNKNOWN_TOKEN, PAD_TOKEN, WORD_PREFIX, WORD_SUFFIX] + self._char_vocab:
             self._char_to_id[w] = self._count_char
             self._id_to_char[self._count_char] = w
-            self._count_pos += 1
+            self._count_char += 1
 
     def char2id(self, char):
         if char not in self._char_to_id:

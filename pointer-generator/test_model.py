@@ -365,8 +365,9 @@ def main(unused_argv):
 
 
     # Create a batcher object that will create minibatches of data
-    batcher = Batcher('/Users/j.zhou/mlp_project/data/finished_files/val.bin', vocab, hps, single_pass=FLAGS.single_pass)
+    # batcher = Batcher('/Users/j.zhou/mlp_project/data/finished_files/val.bin', vocab, hps, single_pass=False)
 
+    # batch = batcher.next_batch()
     model = SummarizationModel(hps, vocab)
     model.build_graph()
     # setup_training(model, batcher)

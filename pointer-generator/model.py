@@ -50,13 +50,13 @@ class SummarizationModel(object):
                 tf.int32, [hps.batch_size, None], name='enc_batch_pos')  # Add tf.placehoder for pos_tag batches
 
         if hps.how_to_use_char != 'no':
-            self._enc_lens_char = tf.placeholder(
-                tf.int32, [hps.batch_size], name='enc_lens_char')
+            # self._enc_lens_char = tf.placeholder(
+            #     tf.int32, [hps.batch_size], name='enc_lens_char')
             self._enc_batch_char = tf.placeholder(
-                tf.int32, [hps.batch_size, None], name='enc_batch_char')  # Add tf.placehoder for pos_tag batches
+                tf.int32, [hps.batch_size, self._hps.max_enc_steps, None], name='enc_batch_char')  # Add tf.placehoder for pos_tag batches
 
-            self._enc_word_char_len = tf.placeholder(
-                tf.int32, [hps.batch_size, None], name='enc_batch_char_len')  # Add tf.placehoder for pos_tag batches
+            # self._enc_word_char_len = tf.placeholder(
+            #     tf.int32, [hps.batch_size, None], name='enc_batch_char_len')  # Add tf.placehoder for pos_tag batches
 
         if FLAGS.pointer_gen:
             self._enc_batch_extend_vocab = tf.placeholder(
@@ -92,9 +92,9 @@ class SummarizationModel(object):
             feed_dict[self._enc_batch_pos] = batch.enc_batch_pos
 
         if FLAGS.how_to_use_char != 'no':
-            feed_dict[self._enc_lens_char] = batch.enc_lens_char
+            # feed_dict[self._enc_lens_char] = batch.enc_lens_char
             feed_dict[self._enc_batch_char] = batch.enc_batch_char
-            feed_dict[self._enc_word_char_len] = batch.enc_word_char_len
+            # feed_dict[self._enc_word_char_len] = batch.enc_word_char_len
 
 
         if FLAGS.pointer_gen:
@@ -132,16 +132,22 @@ class SummarizationModel(object):
             encoder_outputs = tf.concat(axis=2, values=encoder_outputs)
         return encoder_outputs, fw_st, bw_st
 
-    def _add_char_conv(self, encoder_inputs_char, word_char_len):
+    def _add_char_conv(self, encoder_inputs_char):
         # word_char_len: batch_size x max_sents_len
+        batch_size, max_seq_len, max_word_len, char_emb_dim = encoder_inputs_char.shape.as_list()
+        tmp = tf.reshape(tensor=encoder_inputs_char, shape=[batch_size * max_seq_len, -1, char_emb_dim])
 
+        kernel_widths = [2, 3, 4, 5]
+        n_kernel = [4, 4, 4, 4]
+        conv_outs = []
         with tf.variable_scope('char_conv'):
-            W_2 = tf.get_variable('conv_filter_bi_gram', [2, 32, 5], dtype=tf.float32, initializer=self.trunc_norm_init)
-            W_3 = tf.get_variable('conv_filter_tri_gram', [3, 32, 5], dtype=tf.float32, initializer=self.trunc_norm_init)
-            W_5 = tf.get_variable('conv_filter_5_gram', [5, 32, 6], dtype=tf.float32, initializer=self.trunc_norm_init)
+            for w, n in zip(kernel_widths, n_kernel):
+                kernel = tf.get_variable('conv_filter_%d_gram' % w, shape=[w, char_emb_dim, n], dtype=tf.float32, initializer=self.trunc_norm_init)
+                out = tf.nn.tanh(tf.nn.conv1d(tmp, kernel, stride=1, padding='SAME', data_format="NWC"))
+                max_over_time = tf.reduce_max(out, axis=1)
+                conv_outs.append(tf.reshape(max_over_time, [batch_size, max_seq_len, -1]))
 
-            out = tf.nn.conv1d(A, W, stride=1, padding='SAME', data_format="NWC")
-            encoder_inputs_char
+        return tf.concat(values=conv_outs, axis=2)
 
     def _reduce_states(self, fw_st_lst, bw_st_lst):
         """Add to the graph a linear layer to reduce the encoder's final FW and BW state into a single initial state for the decoder. 
@@ -320,13 +326,13 @@ class SummarizationModel(object):
                 if hps.how_to_use_char != 'no':
                     embedding_char = tf.get_variable('embedding_char', [
                                                      char_size, hps.char_emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-                    emb_enc_inputs_char = tf.nn.embedding_lookup(
-                        embedding_char, self._enc_batch_char)
-                    emb_enc_inputs_char_conv = self._add_char_conv(emb_enc_inputs_char, self._enc_word_char_len)
+                    emb_enc_inputs_char = tf.nn.embedding_lookup(embedding_char, self._enc_batch_char)
+                    emb_enc_inputs_char_conv = self._add_char_conv(emb_enc_inputs_char)
 
                     if hps.how_to_use_char == 'concate':
                         emb_enc_inputs = tf.concat(
                             [emb_enc_inputs, emb_enc_inputs_char_conv], axis=2)
+                        print(emb_enc_inputs.shape)
 
             # Add the encoder for word level features
             fw_st_lst, bw_st_lst = [], []
