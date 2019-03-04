@@ -51,12 +51,30 @@ class Example(object):
             article_words = article_words[:hps.max_enc_steps]
         # store the length after truncation but before padding
         self.enc_len = len(article_words)
+
         # list of word ids; OOVs are represented by the id for UNK token
         self.enc_input = [vocab.word2id(w) for w in article_words]
 
         # list of pos ids
         if hps.how_to_use_pos != 'no':
             self.enc_input_pos = vocab.word2pos_id(article_words)
+
+        if hps.how_to_use_char != 'no':
+
+            def gen_chars(word):
+                ret = [vocab.char2id(data.WORD_PREFIX)]
+                ret.extend([vocab.char2id(char) for char in word])
+                if len(ret) >= hps.max_word_len:
+                    return ret[:hps.max_word_len]
+                else:
+                    ret.append(vocab.char2id(data.WORD_SUFFIX))
+
+                while len(ret) < hps.max_word_len:
+                    ret.append(vocab.char2id(data.PAD_TOKEN))
+                return ret
+
+            self.enc_input_char = [gen_chars(word) for word in article_words]
+
         # Process the abstract
         abstract = ' '.join(abstract_sentences)  # string
         abstract_words = abstract.split()  # list of strings
@@ -123,6 +141,7 @@ class Example(object):
         """Pad the encoder input sequence with pad_id up to max_len."""
         while len(self.enc_input) < max_len:
             self.enc_input.append(pad_id)
+
         if self.hps.pointer_gen:
             while len(self.enc_input_extend_vocab) < max_len:
                 self.enc_input_extend_vocab.append(pad_id)
@@ -130,6 +149,10 @@ class Example(object):
     def pad_encoder_input_pos(self, max_len, pad_id):
         while len(self.enc_input_pos) < max_len:
             self.enc_input_pos.append(pad_id)
+
+    def pad_encoder_input_char(self, max_len, pad_id):
+        while len(self.enc_input_char) < max_len:
+            self.enc_input_char.append([pad_id] * self.hps.max_word_len)
 
 
 class Batch(object):
@@ -143,8 +166,10 @@ class Batch(object):
            hps: hyperparameters
            vocab: Vocabulary object
         """
-        self.pad_id = vocab.word2id(data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
+        self.pad_id = vocab.word2id(
+            data.PAD_TOKEN)  # id of the PAD token (PAD) used to pad sequences
         self.pad_id_pos = vocab.single_pos2id(data.PAD_TOKEN)
+        self.pad_id_char = vocab.char2id(data.PAD_TOKEN)
 
         # initialize the input to the encoder
         self.init_encoder_seq(example_list, hps)
@@ -170,27 +195,36 @@ class Batch(object):
               Same as self.enc_batch, but in-article OOVs are represented by their temporary article OOV number.
         """
         # Determine the maximum length of the word input sequence in this batch
-        max_word_seq_len = max([ex.enc_len for ex in example_list])
-        # The maximum lengh of encoder sequence (word sequence = pos tags)
-        max_enc_seq_len = max_word_seq_len  # TO BE CONTINUED (character sequence)
+        max_seq_len = max([ex.enc_len for ex in example_list])
 
         # Pad the encoder input sequences up to the length of the longest sequence
         for ex in example_list:
-            ex.pad_encoder_input(max_enc_seq_len, self.pad_id)
-            ex.pad_encoder_input_pos(max_enc_seq_len, self.pad_id_pos)
+            ex.pad_encoder_input(max_seq_len, self.pad_id)
+
+            if hps.how_to_use_pos != 'no':
+                ex.pad_encoder_input_pos(max_seq_len, self.pad_id_pos)
+            if hps.how_to_use_char != 'no':
+                ex.pad_encoder_input_char(max_seq_len, self.pad_id_char)
 
         # Initialize the numpy arrays
         # Note: our enc_batch can have different length (second dimension) for each batch because we use dynamic_rnn for the encoder.
 
         self.enc_batch = np.zeros(
-            (hps.batch_size, max_enc_seq_len), dtype=np.int32)
-        self.enc_batch_pos = np.zeros(
-            (hps.batch_size, max_enc_seq_len), dtype=np.int32)
+            (hps.batch_size, max_seq_len), dtype=np.int32)
+
         self.enc_lens = np.zeros((hps.batch_size), dtype=np.int32)
+
         self.enc_padding_mask = np.zeros(
-            (hps.batch_size, max_enc_seq_len), dtype=np.float32)  # word & pos features share this mask
-        # self.enc_padding_mask_pos = np.zeros(
-        #     (hps.batch_size, max_enc_seq_len), dtype=np.float32)
+            (hps.batch_size, max_seq_len), dtype=np.float32)  # word & pos features share this mask
+
+
+        if hps.how_to_use_pos != 'no':
+            self.enc_batch_pos = np.zeros(
+                (hps.batch_size, max_seq_len), dtype=np.int32)
+
+        if hps.how_to_use_char != 'no':
+            self.enc_batch_char = np.zeros(
+                (hps.batch_size, max_seq_len, hps.max_word_len), dtype=np.int32)
 
         # Fill in the numpy arrays with word sequences and pos tags sequence
         for i, ex in enumerate(example_list):
@@ -200,6 +234,12 @@ class Batch(object):
             if hps.how_to_use_pos != 'no':
                 assert len(self.enc_batch_pos[i, :]) == len(ex.enc_input_pos)
                 self.enc_batch_pos[i, :] = ex.enc_input_pos[:]
+
+            if hps.how_to_use_char != 'no':
+                for k in range(max_seq_len):
+                    self.enc_batch_char[i, k, :] = ex.enc_input_char[k][:]
+                # self.enc_lens_char[i] = ex.enc_len_char
+                # self.enc_word_char_len[i] = ex.enc_word_char_len[:]
 
             for j in range(ex.enc_len):
                 self.enc_padding_mask[i][j] = 1
@@ -214,9 +254,10 @@ class Batch(object):
             self.art_oovs = [ex.article_oovs for ex in example_list]
             # Store the version of the enc_batch that uses the article OOV ids
             self.enc_batch_extend_vocab = np.zeros(
-                (hps.batch_size, max_enc_seq_len), dtype=np.int32)
+                (hps.batch_size, max_seq_len), dtype=np.int32)
             for i, ex in enumerate(example_list):
                 self.enc_batch_extend_vocab[i, :] = ex.enc_input_extend_vocab[:]
+
 
     def init_decoder_seq(self, example_list, hps):
         """Initializes the following:
@@ -305,7 +346,8 @@ class Batcher(object):
             self._example_q_threads[-1].start()
         self._batch_q_threads = []
         for _ in range(self._num_batch_q_threads):
-            self._batch_q_threads.append(Thread(target=self.fill_batch_queue))  # use Thread to fill batch queue with examples
+            # use Thread to fill batch queue with examples
+            self._batch_q_threads.append(Thread(target=self.fill_batch_queue))
             self._batch_q_threads[-1].daemon = True
             self._batch_q_threads[-1].start()
 
@@ -380,7 +422,8 @@ class Batcher(object):
                 # Get bucketing_cache_size-many batches of Examples into a list, then sort
                 inputs = []
                 for _ in range(self._hps.batch_size * self._bucketing_cache_size):
-                    inputs.append(self._example_queue.get())  # takes examples from example queue
+                    # takes examples from example queue
+                    inputs.append(self._example_queue.get())
                 # sort by length of encoder sequence
                 inputs = sorted(inputs, key=lambda inp: inp.enc_len)
 
@@ -391,7 +434,8 @@ class Batcher(object):
                 if not self._single_pass:
                     shuffle(batches)
                 for b in batches:  # each b is a list of Example objects
-                    self._batch_queue.put(Batch(b, self._hps, self._vocab))  # put examples into Batch object
+                    # put examples into Batch object
+                    self._batch_queue.put(Batch(b, self._hps, self._vocab))
 
             else:  # beam search decode mode
                 ex = self._example_queue.get()
@@ -428,9 +472,11 @@ class Batcher(object):
             e = next(example_generator)  # e is a tf.Example
             try:
                 # the article text was saved under the key 'article' in the data files
-                article_text = e.features.feature['article'].bytes_list.value[0].decode()
+                article_text = e.features.feature['article'].bytes_list.value[0].decode(
+                )
                 # the abstract text was saved under the key 'abstract' in the data files
-                abstract_text = e.features.feature['abstract'].bytes_list.value[0].decode()
+                abstract_text = e.features.feature['abstract'].bytes_list.value[0].decode(
+                )
             except ValueError:
                 tf.logging.error(
                     'Failed to get article or abstract from example')
