@@ -1,11 +1,10 @@
 #!/bin/sh
-#######################
-## RESET YOUR ROOT PATH
-#######################
+#####################
+##### OUR OWN SETTING
+#####################
 export ROOT_DIR=~/mlp_project
-export DATA_DIR=$ROOT_DIR/data/finished_files
 export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
-# see the logs dir for experiment records
+export DATA_DIR=$ROOT_DIR/data/finished
 export LOG_DIR=$ROOT_DIR/logs
 # give a name to your experiment
 export EXP_NAME=pos_concate
@@ -14,9 +13,10 @@ export EXP_NAME=pos_concate
 export POS_METHOD=concate
 export CHAR_METHOD=no
 
-#######
-# TRAIN
-#######
+# Activate the relevant virtual environment:
+
+source /home/${STUDENT_ID}/miniconda3/bin/activate mlp
+
 python $BASELINE_CODE_DIR/run_summarization.py\
     --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
