@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from pickle import dump, load
 
 def get_POS_tagged_sent(sentence):

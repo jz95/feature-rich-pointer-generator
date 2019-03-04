@@ -31,10 +31,9 @@ export PYTHON_PATH=$PATH
 #####################
 export ROOT_DIR=/home/${STUDENT_ID}/mlp_project
 export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
-export DISK=/disk/scratch/deep_playing
 # see the logs dir for experiment records
-export DATA_DIR=${DISK}/data
-export LOG_DIR=${DISK}/logs
+export DATA_DIR=${ROOT_DIR}/data
+export LOG_DIR=${ROOT_DIR}/logs
 # give a name to your experiment
 export EXP_NAME=pos_concate
 
