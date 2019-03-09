@@ -23,6 +23,7 @@ tf.app.flags.DEFINE_string(
 
 # Important settings
 tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
+tf.app.flags.DEFINE_boolean('eval_offline', False, 'if use offline evaluation')
 tf.app.flags.DEFINE_boolean('single_pass', False, 
     'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, \
     i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, \
@@ -267,7 +268,7 @@ def run_training(model, batcher, sess_context_manager, sv, summary_writer):
                 summary_writer.flush()
 
 
-def run_eval(model, batcher, vocab):
+def run_eval(model, batcher, vocab, offline=False):
     """Repeatedly runs eval iterations,
     logging to screen and writing summaries.
     Saves the model with the best loss seen so far."""
@@ -288,7 +289,11 @@ def run_eval(model, batcher, vocab):
 
     while True:
         # during eval mode, model should load the latest ckpt manually
-        _ = util.load_ckpt(saver, sess)  # load a new checkpoint
+        if offline:
+            _ = util.loop_over_ckpt(saver, sess)  # load a new checkpoint
+        else:
+            _ = util.load_ckpt(saver, sess)  # load a new checkpoint
+
         batch = batcher.next_batch()  # get the next batch
 
         # run eval on the batch
@@ -358,7 +363,8 @@ def main(unused_argv):
             "The single_pass flag should only be True in decode mode")
 
     # Make a namedtuple hps, containing the values of the hyperparameters that the model needs
-    hparam_list = ['mode', 'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm',
+    hparam_list = ['mode', 'eval_offline',
+                   'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm',
                    'hidden_dim', 'emb_dim', 'pos_emb_dim', 'char_emb_dim',
                    'how_to_use_pos', 'how_to_use_char',
                    'batch_size', 'max_dec_steps', 'max_enc_steps', 'max_word_len',
@@ -382,7 +388,7 @@ def main(unused_argv):
         setup_training(model, batcher)
     elif hps.mode == 'eval':
         model = SummarizationModel(hps, vocab)
-        run_eval(model, batcher, vocab)
+        run_eval(model, batcher, vocab, hps.eval_offline)
     elif hps.mode == 'decode':
         decode_model_hps = hps  # This will be the hyperparameters for the decoder model
         # The model is configured with max_dec_steps=1
