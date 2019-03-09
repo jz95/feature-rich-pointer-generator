@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import sys
 import time
 import os
@@ -286,6 +284,7 @@ def run_eval(model, batcher, vocab, offline=False):
     # when to implement early stopping
     running_avg_loss = 0
     best_loss = None  # will hold the best loss achieved so far
+    cnt = 0
 
     while True:
         # during eval mode, model should load the latest ckpt manually
@@ -320,16 +319,18 @@ def run_eval(model, batcher, vocab, offline=False):
 
         # If running_avg_loss is best so far, save this checkpoint (early stopping).
         # These checkpoints will appear as bestmodel-<iteration_number> in the eval dir
-        if best_loss is None or running_avg_loss < best_loss:
-            tf.logging.info('Found new best model with %.3f running_avg_loss. Saving to %s',
-                            running_avg_loss, bestmodel_save_path)
-            saver.save(sess, bestmodel_save_path, global_step=train_step,
-                       latest_filename='checkpoint_best')
-            best_loss = running_avg_loss
+        if cnt > 5:
+            if best_loss is None or running_avg_loss < best_loss:
+                tf.logging.info('Found new best model with %.3f running_avg_loss. Saving to %s',
+                                running_avg_loss, bestmodel_save_path)
+                saver.save(sess, bestmodel_save_path, global_step=train_step,
+                           latest_filename='checkpoint_best')
+                best_loss = running_avg_loss
 
         # flush the summary writer every so often
         if train_step % 100 == 0:
             summary_writer.flush()
+        cnt += 1
 
 
 def main(unused_argv):
