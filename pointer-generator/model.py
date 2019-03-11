@@ -10,7 +10,7 @@ FLAGS = tf.app.flags.FLAGS
 
 
 class SummarizationModel(object):
-    """A class to represent a sequence-to-sequence model for text summarization. 
+    """A class to represent a sequence-to-sequence model for text summarization.
     Supports both baseline mode, pointer-generator mode, and coverage"""
 
     def __init__(self, hps, vocab):

@@ -16,8 +16,10 @@ To train the model with pos embeddings, move the file `vocab_pos.txt` under the 
 pip install pyrouge
 ```
 2. set rouge path
+clone the pyrouge PERL repo
 ```
-pyrouge_set_rouge_path /absolute/path/to/mlp_proj/pyrouge/tools/ROUGE-1.5.5
+git clone https://github.com/andersjo/pyrouge
+pyrouge_set_rouge_path /absolute/path/to/pyrouge/tools/ROUGE-1.5.5
 ```
 3. run evaluation in dir scripts
 

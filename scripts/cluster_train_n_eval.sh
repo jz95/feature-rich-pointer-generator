@@ -44,6 +44,7 @@ export CHAR_METHOD=no
 # Activate the relevant virtual environment:
 source /home/${STUDENT_ID}/miniconda3/bin/activate mlp
 
+CUDA_VISIBLE_DEVICES=0,1,2 \
 python $BASELINE_CODE_DIR/run_summarization.py\
     --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
@@ -58,6 +59,7 @@ sleep 600   # no hurry to run eval
 ##################
 ## EVAL CONCURRENT
 ##################
+CUDA_VISIBLE_DEVICES=3 \
 python $BASELINE_CODE_DIR/run_summarization.py\
     --mode=eval\
     --data_path=$DATA_DIR/chunked/val_*\
