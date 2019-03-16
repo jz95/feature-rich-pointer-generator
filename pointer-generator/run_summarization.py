@@ -10,6 +10,8 @@ from model import SummarizationModel
 from decode import BeamSearchDecoder
 import util
 from tensorflow.python import debug as tf_debug
+from functools import reduce
+from operator import mul
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -130,6 +132,14 @@ def calc_running_avg_loss(loss, running_avg_loss, summary_writer, step, decay=0.
     return running_avg_loss
 
 
+def calc_total_parameters():
+    num_params = 0
+    for variable in tf.trainable_variables():
+        shape = variable.get_shape()
+        num_params += reduce(mul, [dim.value for dim in shape], 1)
+    return num_params
+
+
 def restore_best_model():
     """Load bestmodel file from eval directory,
     add variables for adagrad,
@@ -157,6 +167,7 @@ def restore_best_model():
     new_saver = tf.train.Saver()
     new_saver.save(sess, new_fname)
     print("Saved.")
+    print("The number of total parameters is {}" .format(calc_total_parameters()))
     exit()
 
 
@@ -200,7 +211,7 @@ def setup_training(model, batcher):
         convert_to_coverage_model()
     if FLAGS.restore_best_model:
         restore_best_model()
-    saver = tf.train.Saver(max_to_keep=3)  # keep 3 checkpoints at a time
+    saver = tf.train.Saver(max_to_keep=500)  # keep 3 checkpoints at a time
 
     # supervisor would load the latest ckpt automatically
     # which allows continuing training

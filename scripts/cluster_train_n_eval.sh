@@ -11,7 +11,7 @@ export CUDA_HOME=/opt/cuda-9.0.176.1/
 
 export CUDNN_HOME=/opt/cuDNN-7.0/
 
-export STUDENT_ID=$(whoami)
+export STUDENT_ID=liushihao0927
 
 export LD_LIBRARY_PATH=/usr/local/lib64/:$LD_LIBRARY_PATH
 
@@ -35,10 +35,10 @@ export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
 export DATA_DIR=${ROOT_DIR}/data/finished_files
 export LOG_DIR=${ROOT_DIR}/logs
 # give a name to your experiment
-export EXP_NAME=pos_concate
+export EXP_NAME=pos_encoder
 
 # VERY IMPORTANT
-export POS_METHOD=concate
+export POS_METHOD=encoder
 export CHAR_METHOD=no
 
 # Activate the relevant virtual environment:
