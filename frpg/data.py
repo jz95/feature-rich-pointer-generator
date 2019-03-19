@@ -6,7 +6,7 @@ import struct
 import csv
 import os
 from tensorflow.core.example import example_pb2
-from .pos_tagger.pos_tagging import get_POS_tagged_sent
+from frpg.pos_tagger.pos_tagging import get_POS_tagged_sent
 
 
 # <s> and </s> are used in the data files to segment the abstracts into sentences. They don't receive vocab ids.

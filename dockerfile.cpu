@@ -5,9 +5,10 @@ RUN apt-get update && apt-get install -y \
       vim \
       procps \
       git
-
+RUN conda install tensorflow=1.10
 COPY . /code/frpg
-RUN python /code/frpg/setup.py develop
+WORKDIR /code/frpg
+RUN python setup.py develop
 RUN git clone https://github.com/andersjo/pyrouge  /code/pyrouge
 RUN pyrouge_set_rouge_path /code/pyrouge/tools/ROUGE-1.5.5
 CMD ["/bin/bash"]

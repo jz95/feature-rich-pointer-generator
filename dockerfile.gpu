@@ -1,0 +1,14 @@
+FROM continuumio/miniconda3
+RUN . /opt/conda/etc/profile.d/conda.sh
+ENV PATH /opt/conda/envs/env/bin:$PATH
+RUN apt-get update && apt-get install -y \
+      vim \
+      procps \
+      git
+RUN conda install tensorflow-gpu=1.10
+COPY . /code/frpg
+WORKDIR /code/frpg
+RUN python setup.py develop
+RUN git clone https://github.com/andersjo/pyrouge  /code/pyrouge
+RUN pyrouge_set_rouge_path /code/pyrouge/tools/ROUGE-1.5.5
+CMD ["/bin/bash"]
