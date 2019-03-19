@@ -29,7 +29,7 @@ echo "=========================="
 echo "save best model ckpt to train"
 frpg_run --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
-    --vocab_path=$DATA_DIR\
+    --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --restore_best_model=True\
@@ -41,7 +41,7 @@ frpg_run --mode=train\
 # all args shall be the SAME as the model you load
 frpg_run --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
-    --vocab_path=$DATA_DIR\
+    --vocab_path=$VOCAB_DIR\
 	--log_root=$LOG_DIR\
 	--exp_name=$EXP_NAME\
     --coverage=True\
@@ -61,7 +61,7 @@ fi
 ########
 frpg_run --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
-    --vocab_path=$DATA_DIR\
+    --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --coverage=True\
@@ -75,7 +75,7 @@ sleep 10
 ##################
 frpg_run --mode=eval\
     --data_path=$DATA_DIR/chunked/val_*\
-    --vocab_path=$DATA_DIR\
+    --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --coverage=True\
