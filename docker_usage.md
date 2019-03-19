@@ -1,15 +1,12 @@
 # DOCKER TUTORIAL
-Guys, when you set up your gcloud instance, please try to use [docker](https://opensource.com/resources/what-docker), a quite lightweight virtual machine, which greatly simplifies the process of configuring environment.
-
-# step 0.
-Set up your gcloud instance with GPU properly, I recommend to use the [DeepLearning VM](https://console.cloud.google.com/marketplace/details/click-to-deploy-images/deeplearning).
+[docker](https://opensource.com/resources/what-docker) is a quite lightweight virtual machine, which greatly simplifies the process of configuring environment.
 
 # step 1.
 Install docker according to your OS version, just follow the steps [here](https://docs.docker.com/install/linux/docker-ce/debian/).
 in cmd type `docker` to see if installed successfully.
 
 # step 2.
-install nvidia docker runtime, just follow these instructions
+Install nvidia docker runtime, just follow these instructions. 
 ```
 # Add the package repositories
 curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | \
@@ -28,21 +25,26 @@ docker run --runtime=nvidia --rm nvidia/cuda:9.0-base nvidia-smi
 ```
 
 # step 3.
-create a docker volume to persist the data
+Create a docker volume to persist the data
 ```
-docker volume create mlp-vol
+# create volume for experiment log
+docker volume create my-vol-log
+# create volume for data
+docker volume create my-vol-data
 ```
-pull our docker image from docker repo and run our container
+Build an image from file named as frpg, and run the container
 ```
-docker run --runtime=nvidia -it --rm -v mlp-vol:/code/mlp_proj/logs jay0518/mlp_proj
+docker build -f dockerfile.gpu -t frpg .
+docker run --runtime=nvidia -it --rm -v my-vol-log:/code/frpg/logs -v my-vol-data:/data frpg
 ```
-Here we run the container and map the volume `mlp-vol` to the path `/code/mlp_proj/logs` in container.
+Here we run the container and map the volume `my-vol-log` to the path `/code/frpg/logs` in container, and map `my-vol-data` to `/data` in container.
 
 # check our experiment results
 ```
-docker volume inspect mlp-vol
+docker volume inspect my-vol-log
+docker volume inspect my-vol-data
 ```
 get the mountpoint
 ```
-ls /var/lib/docker/volumes/mlp-vol/_data
+ls /var/lib/docker/volumes/my-vol-log/_data
 ```

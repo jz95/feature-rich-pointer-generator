@@ -445,8 +445,8 @@ class SummarizationModel(object):
         return num_params
 
     def run_train_step(self, sess, batch):
-        """Runs one training iteration. 
-        Returns a dictionary containing train op, summaries, 
+        """Runs one training iteration.
+        Returns a dictionary containing train op, summaries,
         loss, global_step and (optionally) coverage loss."""
         feed_dict = self._make_feed_dict(batch)
         to_return = {
