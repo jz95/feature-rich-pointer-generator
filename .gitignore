@@ -5,8 +5,8 @@
 
 prepare_data/*
 data/*
-
-*.sublime-*
 cloud_data/*
 notebooks/*
+
+*.sublime-*
 *.egg-info/*
