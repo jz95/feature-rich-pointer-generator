@@ -3,24 +3,23 @@
 ##### OUR OWN SETTING
 #####################
 export ROOT_DIR=~/mlp_project
-export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
 export DATA_DIR=$ROOT_DIR/data/finished_files
+export VOCAB_DIR=$ROOT_DIR/vocab
 export LOG_DIR=$ROOT_DIR/logs
 # give a name to your experiment
 export EXP_NAME=test
 
 # VERY IMPORTANT
-export POS_METHOD=no
+export POS_METHOD=concate
 export CHAR_METHOD=concate
 
 ##################
-## EVAL CONCURRENT
+## EVAL OFFLINE
 ##################
-python $BASELINE_CODE_DIR/run_summarization.py\
-    --mode=eval\
-    --offline_eval=True\
+frpg_run --mode=eval\
+    --offline=True\
     --data_path=$DATA_DIR/chunked/val_*\
-    --vocab_path=$DATA_DIR\
+    --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
     --how_to_use_pos=$POS_METHOD\

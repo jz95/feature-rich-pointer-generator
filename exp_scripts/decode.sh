@@ -4,14 +4,14 @@
 #######################
 export ROOT_DIR=~/mlp_project
 export DATA_DIR=$ROOT_DIR/data/finished_files
-export BASELINE_CODE_DIR=$ROOT_DIR/pointer-generator
-# see the logs dir for experiment records
+export VOCAB_DIR=$ROOT_DIR/vocab
 export LOG_DIR=$ROOT_DIR/logs
 # give a name to your experiment
-export EXP_NAME=pos_concate
+export EXP_NAME=test
 
+# VERY IMPORTANT
 export POS_METHOD=concate
-export CHAR_METHOD=no
+export CHAR_METHOD=concate
 
 ###################
 # LOAD BEST MODEL #
@@ -19,7 +19,7 @@ export CHAR_METHOD=no
 echo "============================="
 echo "save best model ckpt to train"
 echo "============================="
-python $BASELINE_CODE_DIR/run_summarization.py\
+frpg_run
     --mode=train\
     --data_path=$DATA_DIR/chunked/train_*\
     --vocab_path=$DATA_DIR\
@@ -38,7 +38,7 @@ sleep 60
 echo "============================="
 echo "start decoding"
 echo "============================="
-python $BASELINE_CODE_DIR/run_summarization.py\
+frpg_run
 	--mode=decode\
 	--data_path=$DATA_DIR/chunked/test_*\
 	--vocab_path=$DATA_DIR\

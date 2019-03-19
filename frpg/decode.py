@@ -3,13 +3,12 @@
 import os
 import time
 import tensorflow as tf
-import beam_search
-import data
 import json
 import pyrouge
-import util
 import logging
-import numpy as np
+from . import beam_search
+from . import data
+from . import util
 
 FLAGS = tf.app.flags.FLAGS
 

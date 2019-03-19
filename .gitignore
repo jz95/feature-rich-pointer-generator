@@ -5,7 +5,7 @@
 
 prepare_data/*
 data/*
-test_space/*
 
 *.sublime-*
 cloud_data/*
+notebooks/*

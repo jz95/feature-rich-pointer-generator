@@ -6,7 +6,7 @@ import struct
 import csv
 import os
 from tensorflow.core.example import example_pb2
-from pos_tagger.pos_tagging import get_POS_tagged_sent
+from .pos_tagger.pos_tagging import get_POS_tagged_sent
 
 
 # <s> and </s> are used in the data files to segment the abstracts into sentences. They don't receive vocab ids.
@@ -31,7 +31,7 @@ WORD_SUFFIX = '</w>'
 class Vocab(object):
     """Vocabulary class for mapping between words and ids (word, pos, and character; integers)"""
 
-    def __init__(self, vocab_path, max_size):
+    def __init__(self, vocab_path, max_vocab_size, use_pos, use_char):
         """Creates a vocab of up to max_size words, reading from the vocab_file. If max_size is 0, reads the entire vocab file.
 
         Args:
@@ -39,11 +39,13 @@ class Vocab(object):
           max_size: integer. The maximum size of the resulting Vocabulary."""
 
         self.vocab_path = vocab_path
-        self.max_size = max_size
+        self.max_size = max_vocab_size
 
         self._init_word_vocab()
-        self._init_pos_vocab()
-        self._init_char_vocab()
+        if use_pos:
+            self._init_pos_vocab()
+        if use_char:
+            self._init_char_vocab()
 
     def _init_word_vocab(self):
         self._word_to_id = {}
@@ -58,10 +60,10 @@ class Vocab(object):
             self._count += 1
 
         # Read the word_vocab file and add words up to max_size
-        filename = os.path.join(self.vocab_path, 'vocab')
+        filename = os.path.join(self.vocab_path, 'vocab_word')
         with open(filename, 'r') as vocab_f:
             for line in vocab_f:
-                pieces = line.split()
+                pieces = line.rstrip().split()
                 if len(pieces) != 2:
                     print(
                         'Warning: incorrectly formatted line in vocabulary file: %s\n' % line)
@@ -95,10 +97,10 @@ class Vocab(object):
             self._count_pos += 1
 
         # Read the vocab_pos file and put pos_ids in self._word_to_pos & self._pos_to_word
-        filename = os.path.join(self.vocab_path, 'vocab_pos.txt')
+        filename = os.path.join(self.vocab_path, 'vocab_pos')
         with open(filename, 'r') as vocab_pos:
             for line in vocab_pos:
-                pieces_pos = line.split('\t')
+                pieces_pos = line.rstrip().split('\t')
                 if len(pieces_pos) != 2:
                     print(
                         'Warning: incorrectly formatted line in vocab_pos file: %s\n' % line)
@@ -118,11 +120,13 @@ class Vocab(object):
         self._char_to_id = {}
         self._id_to_char = {}
 
-        fr_syms = list("""éèàùâêîôûëïç""")
-        de_syms = list("""äöüß""")
-        other_syms = list("""€£©™±""")
-        puncts = list(""",;.!?:'"/\\|_@#$%^&* ~`+-=<>()[]{}•‑""")
-        self._char_vocab = list("""abcdefghijklmnopqrstuvwxyz0123456789""") + fr_syms + de_syms + other_syms + puncts
+        filename = os.path.join(self.vocab_path, 'vocab_char')
+        self._char_vocab = []
+        with open(filename, 'r') as vocab_char:
+            for line in vocab_char:
+                self._char_vocab.extend(list(line.rstrip()))
+            print('The char vocab we are using is:', self._char_vocab)
+
         self._count_char = 0
 
         for w in [UNKNOWN_TOKEN, PAD_TOKEN, WORD_PREFIX, WORD_SUFFIX] + self._char_vocab:
@@ -155,7 +159,7 @@ class Vocab(object):
 
     def word2pos_id(self, sentence):
         """Returns the pos tag of a word (string)."""
-        pos = get_POS_tagged_sent(sentence)[0]
+        pos = get_POS_tagged_sent(sentence)
         return [self._pos_to_id[w[1]] if w[1] in self._pos_to_id else self._pos_to_id[UNKNOWN_TOKEN] for w in pos]
 
     def single_pos2id(self, pos):

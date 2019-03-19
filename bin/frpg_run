@@ -1,104 +1,66 @@
-import sys
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import time
 import os
 import tensorflow as tf
 import numpy as np
 from collections import namedtuple
-from data import Vocab
-from batcher import Batcher
-from model import SummarizationModel
-from decode import BeamSearchDecoder
-import util
+from frpg.data import Vocab
+from frpg.batcher import Batcher
+from frpg.model import SummarizationModel
+from frpg.decode import BeamSearchDecoder
+from frpg import util
 from tensorflow.python import debug as tf_debug
-from functools import reduce
-from operator import mul
 
 FLAGS = tf.app.flags.FLAGS
 
 # Where to find data
-tf.app.flags.DEFINE_string(
-    'data_path', '', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
-tf.app.flags.DEFINE_string(
-    'vocab_path', '', 'Path expression to text vocabulary file.')
+tf.app.flags.DEFINE_string('data_path', '', 'Path expression to tf.Example datafiles. Can include wildcards to access multiple datafiles.')
+tf.app.flags.DEFINE_string('vocab_path', '', 'Path expression to the parent directory of text vocabulary file and vocab for POS tag.')
 
 # Important settings
 tf.app.flags.DEFINE_string('mode', 'train', 'must be one of train/eval/decode')
-tf.app.flags.DEFINE_boolean('eval_offline', False, 'if use offline evaluation')
-tf.app.flags.DEFINE_boolean('single_pass', False, 
-    'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, \
-    i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, \
-    write the summaries to file and then get ROUGE scores for the whole dataset. \
-    If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, \
-    use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
+tf.app.flags.DEFINE_boolean('offline', False, 'For eval mode only. If True, run eval on the over all checkpoint saved in the given directory, If False (default), run concurrent evaluation, i.e. repeatedly load latest checkpoint, compute the moving average error.')
+tf.app.flags.DEFINE_boolean('single_pass', False, 'For decode mode only. If True, run eval on the full dataset using a fixed checkpoint, i.e. take the current checkpoint, and use it to produce one summary for each example in the dataset, write the summaries to file and then get ROUGE scores for the whole dataset. If False (default), run concurrent decoding, i.e. repeatedly load latest checkpoint, use it to produce summaries for randomly-chosen examples and log the results to screen, indefinitely.')
 
 # Where to save output
 tf.app.flags.DEFINE_string('log_root', '', 'Root directory for all logging.')
-tf.app.flags.DEFINE_string(
-    'exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.app.flags.DEFINE_string('exp_name', '', 'Name for experiment. Logs will be saved in a directory with this name, under log_root.')
+tf.app.flags.DEFINE_integer('keep_ckpt', 10, 'The number of ckpt you need to keep.')
 
 # Hyperparameters
-tf.app.flags.DEFINE_integer(
-    'hidden_dim', 256, 'dimension of RNN hidden states')
+tf.app.flags.DEFINE_integer('hidden_dim', 256, 'dimension of RNN hidden states')
 tf.app.flags.DEFINE_integer('emb_dim', 128, 'dimension of word embeddings')
 tf.app.flags.DEFINE_integer('pos_emb_dim', 32, 'dimension of pos embeddings')
 tf.app.flags.DEFINE_integer('char_emb_dim', 16, 'dimension of char embeddings')
 
-tf.app.flags.DEFINE_string('how_to_use_pos', 'no',
-    'must be one of no/concate/encoder, no - dont include pos, i.e. baseline mode\
-                                        concate - just concate pos embedding with word embedding')
-
-tf.app.flags.DEFINE_string('how_to_use_char', 'no',
-    'must be one of no/concate/encoder, no - dont include char, i.e. baseline mode\
-                                        concate - just concate char embedding with word embedding')
+tf.app.flags.DEFINE_string('how_to_use_pos', 'no', 'must be one of no/concate/encoder, no - dont include pos, i.e. baseline model, concate - just concate pos embedding with word embedding, encoder - integrate pos embedding with parallel encoders')
+tf.app.flags.DEFINE_string('how_to_use_char', 'no', 'must be one of no/concate/encoder, no - dont include char, i.e. baseline model, concate - just concate char embedding with word embedding, encoder - integrate char embedding with parallel encoders')
 
 tf.app.flags.DEFINE_integer('batch_size', 16, 'minibatch size')
-tf.app.flags.DEFINE_integer(
-    'max_word_len', 32, 'max word length limitation')
-tf.app.flags.DEFINE_integer(
-    'max_enc_steps', 400, 'max timesteps of encoder (max source text tokens)')
-tf.app.flags.DEFINE_integer(
-    'max_dec_steps', 100, 'max timesteps of decoder (max summary tokens)')
-tf.app.flags.DEFINE_integer(
-    'beam_size', 4, 'beam size for beam search decoding.')
-tf.app.flags.DEFINE_integer(
-    'min_dec_steps', 35, 'Minimum sequence length of generated summary. Applies only for beam search decoding mode')
-tf.app.flags.DEFINE_integer(
-    'vocab_size', 50000, 'Size of vocabulary. \
-    These will be read from the vocabulary file in order. \
-    If the vocabulary file contains fewer words than this number, \
-    or if this number is set to 0, will take all words in the vocabulary file.')
+tf.app.flags.DEFINE_integer('max_word_len', 32, 'max word length limitation')
+tf.app.flags.DEFINE_integer('max_enc_steps', 400, 'max timesteps of encoder (max source text tokens)')
+tf.app.flags.DEFINE_integer('max_dec_steps', 100, 'max timesteps of decoder (max summary tokens)')
+tf.app.flags.DEFINE_integer('beam_size', 4, 'beam size for beam search decoding.')
+tf.app.flags.DEFINE_integer('min_dec_steps', 35, 'Minimum sequence length of generated summary. Applies only for beam search decoding mode')
+tf.app.flags.DEFINE_integer('vocab_size', 50000, 'Size of vocabulary. These will be read from the vocabulary file in order. If the vocabulary file contains fewer words than this number, or if this number is set to 0, will take all words in the vocabulary file.')
 tf.app.flags.DEFINE_float('lr', 0.15, 'learning rate')
-tf.app.flags.DEFINE_float('adagrad_init_acc', 0.1,
-                          'initial accumulator value for Adagrad')
-tf.app.flags.DEFINE_float('rand_unif_init_mag', 0.02,
-                          'magnitude for lstm cells random uniform inititalization')
-tf.app.flags.DEFINE_float('trunc_norm_init_std', 1e-4,
-                          'std of trunc norm init, used for initializing everything else')
+tf.app.flags.DEFINE_float('adagrad_init_acc', 0.1, 'initial accumulator value for Adagrad')
+tf.app.flags.DEFINE_float('rand_unif_init_mag', 0.02, 'magnitude for lstm cells random uniform inititalization')
+tf.app.flags.DEFINE_float('trunc_norm_init_std', 1e-4, 'std of trunc norm init, used for initializing everything else')
 tf.app.flags.DEFINE_float('max_grad_norm', 2.0, 'for gradient clipping')
 
 # Pointer-generator or baseline model
-tf.app.flags.DEFINE_boolean(
-    'pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
+tf.app.flags.DEFINE_boolean('pointer_gen', True, 'If True, use pointer-generator model. If False, use baseline model.')
 
 # Coverage hyperparameters
-tf.app.flags.DEFINE_boolean('coverage', False,
-    'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged,\
-     and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, \
-     turn this off for most of training then turn on for a short phase at the end.')
-tf.app.flags.DEFINE_float(
-    'cov_loss_wt', 1.0, 'Weight of coverage loss (lambda in the paper). \
-    If zero, then no incentive to minimize coverage loss.')
+tf.app.flags.DEFINE_boolean('coverage', False, 'Use coverage mechanism. Note, the experiments reported in the ACL paper train WITHOUT coverage until converged, and then train for a short phase WITH coverage afterwards. i.e. to reproduce the results in the ACL paper, turn this off for most of training then turn on for a short phase at the end.')
+tf.app.flags.DEFINE_float('cov_loss_wt', 1.0, 'Weight of coverage loss (lambda in the paper). If zero, then no incentive to minimize coverage loss.')
 
 # Utility flags, for restoring and changing checkpoints
 tf.app.flags.DEFINE_boolean('convert_to_coverage_model', False, 
-    'Convert a non-coverage model to a coverage model. \
-    Turn this on and run in train mode. Your current training model will be copied to a new version\
-     (same name with _cov_init appended) that will be ready to run with coverage flag turned on,\
-      for the coverage training stage.')
-tf.app.flags.DEFINE_boolean('restore_best_model', False,
-                            'Restore the best model in the eval/ dir and save it in the train/ dir,\
-                             ready to be used for further training. Useful for early stopping, \
-                             or if your training checkpoint has become corrupted with e.g. NaN values.')
+    'Convert a non-coverage model to a coverage model. Turn this on and run in train mode. Your current training model will be copied to a new version (same name with _cov_init appended) that will be ready to run with coverage flag turned on, for the coverage training stage.')
+tf.app.flags.DEFINE_boolean('restore_best_model', False, 'Restore the best model in the eval/ dir and save it in the train/ dir, ready to be used for further training. Useful for early stopping, or if your training checkpoint has become corrupted with e.g. NaN values.')
 
 # Debugging. See https://www.tensorflow.org/programmers_guide/debugger
 tf.app.flags.DEFINE_boolean(
@@ -132,14 +94,6 @@ def calc_running_avg_loss(loss, running_avg_loss, summary_writer, step, decay=0.
     return running_avg_loss
 
 
-def calc_total_parameters():
-    num_params = 0
-    for variable in tf.trainable_variables():
-        shape = variable.get_shape()
-        num_params += reduce(mul, [dim.value for dim in shape], 1)
-    return num_params
-
-
 def restore_best_model():
     """Load bestmodel file from eval directory,
     add variables for adagrad,
@@ -167,7 +121,6 @@ def restore_best_model():
     new_saver = tf.train.Saver()
     new_saver.save(sess, new_fname)
     print("Saved.")
-    print("The number of total parameters is {}" .format(calc_total_parameters()))
     exit()
 
 
@@ -198,7 +151,7 @@ def convert_to_coverage_model():
     exit()
 
 
-def setup_training(model, batcher):
+def setup_training(model, batcher, n_keep_ckpt=3):
     """Does setup before starting training (run_training)"""
     train_dir = os.path.join(FLAGS.log_root, "train")
     if not os.path.exists(train_dir):
@@ -211,7 +164,7 @@ def setup_training(model, batcher):
         convert_to_coverage_model()
     if FLAGS.restore_best_model:
         restore_best_model()
-    saver = tf.train.Saver(max_to_keep=500)  # keep 3 checkpoints at a time
+    saver = tf.train.Saver(max_to_keep=n_keep_ckpt)  # how many ckpt would be kept at a time
 
     # supervisor would load the latest ckpt automatically
     # which allows continuing training
@@ -277,14 +230,14 @@ def run_training(model, batcher, sess_context_manager, sv, summary_writer):
                 summary_writer.flush()
 
 
-def run_eval(model, batcher, vocab, offline=False):
+def run_eval(model, batcher, vocab, offline=False, n_keep_ckpt=3):
     """Repeatedly runs eval iterations,
     logging to screen and writing summaries.
     Saves the model with the best loss seen so far."""
 
     model.build_graph()  # build the graph
     # we will keep 3 best checkpoints at a time
-    saver = tf.train.Saver(max_to_keep=3)
+    saver = tf.train.Saver(max_to_keep=n_keep_ckpt)
     sess = tf.Session(config=util.get_config())
     # make a subdir of the root dir for eval data
     eval_dir = os.path.join(FLAGS.log_root, "eval")
@@ -302,7 +255,7 @@ def run_eval(model, batcher, vocab, offline=False):
         if offline:
             _ = util.loop_over_ckpt(saver, sess)  # load a new checkpoint
         else:
-            _ = util.load_ckpt(saver, sess)  # load a new checkpoint
+            _ = util.load_ckpt(saver, sess)  # loop over existing checkpoint
 
         batch = batcher.next_batch()  # get the next batch
 
@@ -331,6 +284,7 @@ def run_eval(model, batcher, vocab, offline=False):
         # If running_avg_loss is best so far, save this checkpoint (early stopping).
         # These checkpoints will appear as bestmodel-<iteration_number> in the eval dir
         if cnt > 5:
+            # only consider whether it's the best model after 5 steps
             if best_loss is None or running_avg_loss < best_loss:
                 tf.logging.info('Found new best model with %.3f running_avg_loss. Saving to %s',
                                 running_avg_loss, bestmodel_save_path)
@@ -361,7 +315,8 @@ def main(unused_argv):
             raise Exception(
                 "Logdir %s doesn't exist. Run in train mode to create it." % (FLAGS.log_root))
 
-    vocab = Vocab(FLAGS.vocab_path, FLAGS.vocab_size)  # create a vocabulary
+    # create a vocabulary
+    vocab = Vocab(FLAGS.vocab_path, FLAGS.vocab_size, FLAGS.how_to_use_pos, FLAGS.how_to_use_char)
 
     # If in decode mode, set batch_size = beam_size
     # Reason: in decode mode, we decode one example at a time.
@@ -375,7 +330,7 @@ def main(unused_argv):
             "The single_pass flag should only be True in decode mode")
 
     # Make a namedtuple hps, containing the values of the hyperparameters that the model needs
-    hparam_list = ['mode', 'eval_offline',
+    hparam_list = ['mode', 'offline', 'keep_ckpt',
                    'lr', 'adagrad_init_acc', 'rand_unif_init_mag', 'trunc_norm_init_std', 'max_grad_norm',
                    'hidden_dim', 'emb_dim', 'pos_emb_dim', 'char_emb_dim',
                    'how_to_use_pos', 'how_to_use_char',
@@ -397,10 +352,10 @@ def main(unused_argv):
     if hps.mode == 'train':
         print("creating model...")
         model = SummarizationModel(hps, vocab)
-        setup_training(model, batcher)
+        setup_training(model, batcher, hps.keep_ckpt)
     elif hps.mode == 'eval':
         model = SummarizationModel(hps, vocab)
-        run_eval(model, batcher, vocab, hps.eval_offline)
+        run_eval(model, batcher, vocab, hps.offline, hps.keep_ckpt)
     elif hps.mode == 'decode':
         decode_model_hps = hps  # This will be the hyperparameters for the decoder model
         # The model is configured with max_dec_steps=1

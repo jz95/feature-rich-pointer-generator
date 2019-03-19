@@ -3,10 +3,11 @@
 import queue as Queue
 from random import shuffle
 from threading import Thread
+from frpg import data
 import time
 import numpy as np
 import tensorflow as tf
-import data
+
 
 
 class Example(object):

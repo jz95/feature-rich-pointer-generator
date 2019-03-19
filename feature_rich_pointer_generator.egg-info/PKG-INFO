@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: feature-rich-pointer-generator
+Version: 1.0
+Summary: An extension for the pointer generator network for abstractive text summerization
+Home-page: https://github.com/JZ95/feature-rich-pointer-generator
+Author: JZhou, ShiHao Liu, Christos Drou
+Author-email: j.zhou0518@gmail.com, liushihao0927@gmail.com, rhaegal1992@gmail.com
+License: MIT
+Description: UNKNOWN
+Platform: UNKNOWN

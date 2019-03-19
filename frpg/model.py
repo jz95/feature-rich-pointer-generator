@@ -3,8 +3,9 @@ import os
 import time
 import numpy as np
 import tensorflow as tf
-from attention_decoder import attention_decoder
-from tensorflow.contrib.tensorboard.plugins import projector
+from .attention_decoder import attention_decoder
+from functools import reduce
+from operator import mul
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -99,6 +100,13 @@ class SummarizationModel(object):
         return encoder_outputs, fw_st, bw_st
 
     def _add_char_conv(self, encoder_inputs_char):
+        """ Add convolution layer for character-level features
+        Args:
+            encoder_inputs_char: A tensor shaped as [batch_size, max_seq_len, max_word_len, char_embed_size]
+
+        Returns:
+            character-level embedding for each token: shaped as [batch_size, max_seq_len, char_embed_size]
+        """
         # word_char_len: batch_size x max_sents_len
         batch_size, max_seq_len, max_word_len, char_emb_dim = encoder_inputs_char.shape.as_list()
         tmp = tf.reshape(tensor=encoder_inputs_char, shape=[-1, max_word_len, char_emb_dim])
@@ -240,20 +248,6 @@ class SummarizationModel(object):
 
             return final_dists
 
-    def _add_emb_vis(self, embedding_var):
-        """Do setup so that we can view word embedding visualization in Tensorboard, as described here:
-        https://www.tensorflow.org/get_started/embedding_viz
-        Make the vocab metadata file, then make the projector config file pointing to it."""
-        train_dir = os.path.join(FLAGS.log_root, "train")
-        vocab_metadata_path = os.path.join(train_dir, "vocab_metadata.tsv")
-        self._vocab.write_metadata(vocab_metadata_path)  # write metadata file
-        summary_writer = tf.summary.FileWriter(train_dir)
-        config = projector.ProjectorConfig()
-        embedding = config.embeddings.add()
-        embedding.tensor_name = embedding_var.name
-        embedding.metadata_path = vocab_metadata_path
-        projector.visualize_embeddings(summary_writer, config)
-
     def _add_seq2seq(self):
         """Add the whole sequence-to-sequence model to the graph."""
         hps = self._hps
@@ -272,8 +266,6 @@ class SummarizationModel(object):
             with tf.variable_scope('embedding'):
                 embedding = tf.get_variable('embedding', [
                                             vsize, hps.emb_dim], dtype=tf.float32, initializer=self.trunc_norm_init)
-
-                # if hps.mode == "train" : self._add_emb_vis(embedding)  # add to tensorboard
 
                 # container for concating vectors
                 emb_enc_inputs = tf.nn.embedding_lookup(
@@ -440,6 +432,17 @@ class SummarizationModel(object):
         self._summaries = tf.summary.merge_all()
         t1 = time.time()
         tf.logging.info('Time to build graph: %i seconds', t1 - t0)
+        tf.logging.info('The number of total free parameters is {}'.format(self.calc_total_parameters()))
+
+    def calc_total_parameters(self):
+        """ compute the number of total free params
+        in the given computing graph.
+        """
+        num_params = 0
+        for variable in tf.trainable_variables():
+            shape = variable.get_shape()
+            num_params += reduce(mul, [dim.value for dim in shape], 1)
+        return num_params
 
     def run_train_step(self, sess, batch):
         """Runs one training iteration. 

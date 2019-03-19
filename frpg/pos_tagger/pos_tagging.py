@@ -1,17 +1,20 @@
 # -*- coding: utf-8 -*-
-from pickle import dump, load
+from pickle import load
+import pkg_resources
+
+TAGGER_PATH = pkg_resources.resource_filename(__name__, 'POS_TAGGER.pkl')
+
+with open(TAGGER_PATH, 'rb') as f:
+    TAGGER = load(f)
+
 
 def get_POS_tagged_sent(sentence):
     """
     Params:
     sentence should be a list of tokens, including punctuation.
     """
+    return TAGGER.tag_sents([sentence])[0]
 
-    #load the tagger 
-    with open('/Users/j.zhou/mlp_project/pointer-generator/pos_tagger/t4.pkl', 'rb') as f:
-        tagger = load(f)
-    tagged_test_sentence = tagger.tag_sents([sentence])
-    return tagged_test_sentence
 
 def main():
     ret = get_POS_tagged_sent(['I', 'go', 'to', 'school', '.'])
