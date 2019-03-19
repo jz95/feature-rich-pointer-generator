@@ -9,3 +9,4 @@ data/*
 *.sublime-*
 cloud_data/*
 notebooks/*
+*.egg-info/*
