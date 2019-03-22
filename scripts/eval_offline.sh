@@ -2,10 +2,9 @@
 #####################
 ##### OUR OWN SETTING
 #####################
-export ROOT_DIR=~/mlp_project
-export DATA_DIR=$ROOT_DIR/data/finished_files
-export VOCAB_DIR=$ROOT_DIR/vocab
-export LOG_DIR=$ROOT_DIR/logs
+export DATA_DIR=/path/to/you/data
+export VOCAB_DIR=/path/to/you/vocab
+export LOG_DIR=/path/to/your/experiment/logs
 # give a name to your experiment
 export EXP_NAME=test
 
@@ -18,7 +17,7 @@ export CHAR_METHOD=concate
 ##################
 frpg_run --mode=eval\
     --offline=True\
-    --data_path=$DATA_DIR/chunked/val_*\
+    --data_path=$DATA_DIR/val_*\
     --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
