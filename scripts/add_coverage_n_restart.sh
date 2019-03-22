@@ -2,10 +2,9 @@
 #######################
 ## RESET YOUR ROOT PATH
 #######################
-export ROOT_DIR=~/mlp_project
-export DATA_DIR=$ROOT_DIR/data/finished_files
-export VOCAB_DIR=$ROOT_DIR/vocab
-export LOG_DIR=$ROOT_DIR/logs
+export DATA_DIR=/path/to/you/data
+export VOCAB_DIR=/path/to/you/vocab
+export LOG_DIR=/path/to/your/experiment/logs
 # give a name to your experiment
 export EXP_NAME=test
 
@@ -28,7 +27,7 @@ echo "=========================="
 # start from the best model we've trained
 echo "save best model ckpt to train"
 frpg_run --mode=train\
-    --data_path=$DATA_DIR/chunked/train_*\
+    --data_path=$DATA_DIR/train_*\
     --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
@@ -40,12 +39,12 @@ frpg_run --mode=train\
 # convert_to_coverage
 # all args shall be the SAME as the model you load
 frpg_run --mode=train\
-    --data_path=$DATA_DIR/chunked/train_*\
+    --data_path=$DATA_DIR/train_*\
     --vocab_path=$VOCAB_DIR\
-	--log_root=$LOG_DIR\
-	--exp_name=$EXP_NAME\
+    --log_root=$LOG_DIR\
+    --exp_name=$EXP_NAME\
     --coverage=True\
-	--convert_to_coverage_model=True\
+    --convert_to_coverage_model=True\
     --how_to_use_pos=$POS_METHOD\
     --how_to_use_char=$CHAR_METHOD
 
@@ -60,7 +59,7 @@ fi
 ## TRAIN
 ########
 frpg_run --mode=train\
-    --data_path=$DATA_DIR/chunked/train_*\
+    --data_path=$DATA_DIR/train_*\
     --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
@@ -74,7 +73,7 @@ sleep 10
 ## EVAL CONCURRENT
 ##################
 frpg_run --mode=eval\
-    --data_path=$DATA_DIR/chunked/val_*\
+    --data_path=$DATA_DIR/val_*\
     --vocab_path=$VOCAB_DIR\
     --log_root=$LOG_DIR\
     --exp_name=$EXP_NAME\
