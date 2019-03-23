@@ -1,5 +1,5 @@
 # Feature Rich Pointer Generator
-This is a [MLP](https://www.inf.ed.ac.uk/teaching/courses/mlp/index-2018.html) group project work in University of Edinburgh. Our work is mainly based on the pointer-generator network proposed by [See (2017)](https://github.com/abisee/pointer-generator).
+This is a [MLP](https://www.inf.ed.ac.uk/teaching/courses/mlp/index-2018.html) group project work in University of Edinburgh. Our work is an extension for the pointer-generator network proposed by [See (2017)](https://github.com/abisee/pointer-generator). See the report in the folder `docs` for detailed information.
 
 ## Usage
 ### Step 1. install pacakge
@@ -36,6 +36,10 @@ pyrouge_set_rouge_path /absolute/path/to/pyrouge/tools/ROUGE-1.5.5
 ```
 frpg_eval_rouge --dir=/path/to/your/result
 ```
+
+## Docker
+Refer the file `docs/docker_usage.md` for guidelines to deploy this repo using docker.
+
 ------------------
 ### Collaborators: 
 [@Shihao Liu](https://github.com/HrBlack), [@Christos Drou](https://github.com/cdroutsas)
